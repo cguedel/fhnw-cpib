@@ -13,4 +13,5 @@ module IML.Tokens where
     | MECHMODE MechMode | DEBUGIN | DEBUGOUT | DO | ELSE | ENDFUN | ENDIF
     | ENDPROC | ENDPROGRAM | ENDWHILE | FUN | GLOBAL | IF | FLOWMODE FlowMode
     | INIT | LOCAL | NOT | PROC | PROGRAM | RETURNS | SKIP | THEN | WHILE
+    | SENTINEL
     deriving (Show, Eq)
