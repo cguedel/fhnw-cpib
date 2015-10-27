@@ -1,0 +1,5 @@
+-- Jacklist:
+-- o for each different Nonterminal - Symbol one Parser
+-- o List with all Nonterminal - Symbol
+--
+-- Do this shit with Pattern matching Jack!
