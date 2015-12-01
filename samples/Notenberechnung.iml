@@ -1,0 +1,14 @@
+program notenberechnung
+global
+	const pkt:int
+	const max:int
+
+	proc calculate(copy const pkt:int, copy const max:int, ref var grade:ratio)
+	do
+		grade := pkt * 5 divE max + 1
+		grade := round (grade * 10) divE 10
+	endproc
+
+do
+
+endprogram

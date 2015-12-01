@@ -2,32 +2,17 @@ program isInteger
 global
 	const m:ratio;
 	const isInteger:bool;
-	
+
 	proc checkInteger(copy const m:ratio, ref var isInteger:bool)
 	do
 		isInteger := denum m = 1
 	endproc
-	
+
 do
 	debugin m init;
 	call checkInteger(m, isInteger init);
-	
+
 	if isInteger = true then
 		debugout num m
 	endif
-endprogram
-
-program notenberechnung
-global
-	const pkt:int
-	const max:int
-	
-	proc calculate(copy const pkt:int, copy const max:int, ref var grade:ratio)
-	do
-		grade := pkt * 5 / max + 1
-		grade := round (grade * 10) / 10
-	endproc
-	
-do
-
 endprogram
