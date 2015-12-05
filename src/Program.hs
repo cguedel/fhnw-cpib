@@ -1,4 +1,6 @@
 import Scanner
+import Parser
+
 import System.Environment
 import System.Directory
 
@@ -12,6 +14,10 @@ parse f = do
   if exists then
     do
       contents <- readFile $ head f
-      print $ tokenize contents
+      let tokens = tokenize contents
+      do
+        mapM_ print tokens
+        let cSynTree = parser tokens
+        print cSynTree
   else
     error "File does not exist"

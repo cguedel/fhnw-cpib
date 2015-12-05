@@ -1,25 +1,51 @@
 module IML where
 
-  type Token = (Terminal, Maybe Attribute)
+  type Position = (Int, Int) -- Line number, column number
+  type Token = (Terminal, Maybe Attribute, Position)
 
   data Attribute
     = ALitAttrib Int
     | BLitAttrib Bool
     | RLitAttrib Int Int
     | IdentAttrib String
-    | OprAttrib Operator
+    | AOprAttrib ArithOperator
+    | BOprAttrib BoolOperator
+    | ROprAttrib RatioOperator
+    | RelOprAttrib RelOperator
     | TypeAttrib Type
     | ChangeModeAttrib ChangeMode
     | MechModeAttrib MechMode
     deriving (Show, Eq)
 
-  data Operator
-    = TIMES | DIV_E | MOD_E
-    | PLUS | MINUS
-    | LT | GE | EQ | NE | GT | LE
-    | NOT | CAND | COR
-    | NUM | DENUM | FLOOR | CEIL | ROUND
+  data ArithOperator
+    = Times
+    | Div
+    | Mod
+    | Plus
+    | Minus
     deriving (Show, Eq)
+
+  data RelOperator
+    = LessEq
+    | Less
+    | NotEq
+    | Equal
+    | Greater
+    | GreaterEq
+    deriving (Eq, Show)
+
+  data RatioOperator
+    = Num
+    | Denom
+    | Floor
+    | Ceil
+    | Round
+    deriving (Eq, Show)
+
+  data BoolOperator
+    = Cand
+    | Cor
+    deriving (Eq, Show)
 
   data Type
     = BOOL | INT | RATIO
@@ -40,11 +66,10 @@ module IML where
     | SEMICOLON
     | COLON
     | BECOMES
-    | MULTOPR
-    | ADDOPR
-    | RELOPR
+    | ARITHOPR
     | BOOLOPR
     | RATIOOPR
+    | RELOPR
     | TYPE
     | CALL
     | CHANGEMODE
@@ -58,13 +83,15 @@ module IML where
     | ENDPROC
     | ENDPROGRAM
     | ENDWHILE
-    | LITERAL
+    | ALITERAL
+    | BLITERAL
+    | RLITERAL
     | FUN
     | GLOBAL
     | IF
     | INIT
     | LOCAL
-    | NOTOPR
+    | NOT
     | PROC
     | PROGRAM
     | RETURNS

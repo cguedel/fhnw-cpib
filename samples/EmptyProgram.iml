@@ -1,0 +1,26 @@
+program empty
+  global
+    var x : bool;
+    var y : ratio;
+
+    fun bla (a:ratio) returns y : bool
+    do
+      skip
+    endfun
+  do
+    skip;
+    x := 1;
+    debugin x;
+    debugout 1;
+    if (x > 5) then
+      skip
+    else
+      skip
+    endif;
+
+    while (x = 5) do
+      skip
+    endwhile;
+
+    call test
+  endprogram
