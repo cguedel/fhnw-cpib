@@ -22,28 +22,6 @@ module AbstractSyntax where
     | NoInitialization
     deriving (Show, Eq)
 
-  data Operator
-    = Not
-    | Times
-    | Div
-    | Mod
-    | Plus
-    | Minus
-    | Less
-    | GreaterEq
-    | Equal
-    | NotEq
-    | Greater
-    | LessEq
-    | CAnd
-    | Cor
-    | Denom
-    | Num
-    | Floor
-    | Ceil
-    | Round
-    deriving (Show, Eq)
-
   data Command
     = SkipCmd
     | CpsCmd [Command]

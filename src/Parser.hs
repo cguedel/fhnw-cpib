@@ -186,20 +186,14 @@ module Parser where
     do
       (ARITHOPR, Just (AOprAttrib IML.Plus), _) <- tokenP ARITHOPR
       expr <- exprP
-      return (MonadicExpr AbstractSyntax.Plus expr)
+      return (MonadicExpr Plus expr)
 
   ratioExprP :: ParserT Expr
   ratioExprP =
     do
       (RATIOOPR, Just (ROprAttrib opr), _) <- tokenP RATIOOPR
       expr <- exprP
-      case opr
-        of
-          IML.Denom -> return (MonadicExpr AbstractSyntax.Denom expr)
-          IML.Num -> return (MonadicExpr AbstractSyntax.Num expr)
-          IML.Floor -> return (MonadicExpr AbstractSyntax.Floor expr)
-          IML.Ceil -> return (MonadicExpr AbstractSyntax.Ceil expr)
-          IML.Round -> return (MonadicExpr AbstractSyntax.Round expr)
+      return (MonadicExpr opr expr)
 
   dyadicExprP :: ParserT Expr
   dyadicExprP = arithExprP
@@ -212,13 +206,7 @@ module Parser where
       lExpr <- factorExprP
       (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR
       rExpr <- exprP
-      case opr
-        of
-          IML.Times -> return (DyadicExpr AbstractSyntax.Times lExpr rExpr)
-          IML.Div -> return (DyadicExpr AbstractSyntax.Div lExpr rExpr)
-          IML.Mod -> return (DyadicExpr AbstractSyntax.Mod lExpr rExpr)
-          IML.Plus -> return (DyadicExpr AbstractSyntax.Plus lExpr rExpr)
-          IML.Minus -> return (DyadicExpr AbstractSyntax.Minus lExpr rExpr)
+      return (DyadicExpr opr lExpr rExpr)
 
   relExprP :: ParserT Expr
   relExprP =
@@ -226,14 +214,7 @@ module Parser where
       lExpr <- factorExprP
       (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR
       rExpr <- exprP
-      case opr
-        of
-          IML.Less -> return (DyadicExpr AbstractSyntax.Less lExpr rExpr)
-          IML.LessEq -> return (DyadicExpr AbstractSyntax.LessEq lExpr rExpr)
-          IML.Greater -> return (DyadicExpr AbstractSyntax.Greater lExpr rExpr)
-          IML.GreaterEq -> return (DyadicExpr AbstractSyntax.GreaterEq lExpr rExpr)
-          IML.Equal -> return (DyadicExpr AbstractSyntax.Equal lExpr rExpr)
-          IML.NotEq -> return (DyadicExpr AbstractSyntax.NotEq lExpr rExpr)
+      return (DyadicExpr opr lExpr rExpr)
 
   boolExprP :: ParserT Expr
   boolExprP =
@@ -241,10 +222,7 @@ module Parser where
       lExpr <- factorExprP
       (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR
       rExpr <- exprP
-      case opr
-        of
-          IML.Cand -> return (DyadicExpr AbstractSyntax.CAnd lExpr rExpr)
-          IML.Cor -> return (DyadicExpr AbstractSyntax.Cor lExpr rExpr)
+      return (DyadicExpr opr lExpr rExpr)
 
   exprListP :: ParserT [Expr]
   exprListP =

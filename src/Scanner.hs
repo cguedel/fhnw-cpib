@@ -18,7 +18,7 @@ module Scanner(tokenize) where
   s0 ('='       : cs, l, accu) = s0 (cs, l, (RELOPR, Just (RelOprAttrib Equal), (l, 0)) : accu)
 
   -- BoolOpr
-  s0 ('&' : '?' : cs, l, accu) = s0 (cs, l, (BOOLOPR, Just (BOprAttrib Cand), (l, 0)) : accu)
+  s0 ('&' : '?' : cs, l, accu) = s0 (cs, l, (BOOLOPR, Just (BOprAttrib CAnd), (l, 0)) : accu)
   s0 ('|' : '?' : cs, l, accu) = s0 (cs, l, (BOOLOPR, Just (BOprAttrib Cor), (l, 0)) : accu)
 
   -- MultOpr

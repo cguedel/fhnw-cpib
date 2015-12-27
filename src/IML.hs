@@ -3,49 +3,41 @@ module IML where
   type Position = (Int, Int) -- Line number, column number
   type Token = (Terminal, Maybe Attribute, Position)
 
+  data Operator
+    = Not
+    | Times
+    | Div
+    | Mod
+    | Plus
+    | Minus
+    | Less
+    | GreaterEq
+    | Equal
+    | NotEq
+    | Greater
+    | LessEq
+    | CAnd
+    | Cor
+    | Denom
+    | Num
+    | Floor
+    | Ceil
+    | Round
+    deriving (Show, Eq)
+
   data Attribute
     = ALitAttrib Int
     | BLitAttrib Bool
     | RLitAttrib Int Int
     | IdentAttrib String
-    | AOprAttrib ArithOperator
-    | BOprAttrib BoolOperator
-    | ROprAttrib RatioOperator
-    | RelOprAttrib RelOperator
+    | AOprAttrib Operator
+    | BOprAttrib Operator
+    | ROprAttrib Operator
+    | RelOprAttrib Operator
     | TypeAttrib Type
     | ChangeModeAttrib ChangeMode
     | MechModeAttrib MechMode
     deriving (Show, Eq)
-
-  data ArithOperator
-    = Times
-    | Div
-    | Mod
-    | Plus
-    | Minus
-    deriving (Show, Eq)
-
-  data RelOperator
-    = LessEq
-    | Less
-    | NotEq
-    | Equal
-    | Greater
-    | GreaterEq
-    deriving (Eq, Show)
-
-  data RatioOperator
-    = Num
-    | Denom
-    | Floor
-    | Ceil
-    | Round
-    deriving (Eq, Show)
-
-  data BoolOperator
-    = Cand
-    | Cor
-    deriving (Eq, Show)
 
   data Type
     = BOOL | INT | RATIO
