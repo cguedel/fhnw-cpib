@@ -7,6 +7,11 @@ module Scanner(tokenize) where
   tokenize :: String -> [Token]
   tokenize cs = s0 (cs, 1, [])
 
+  isLineBreak :: Char -> Bool
+  isLineBreak '\r' = True
+  isLineBreak '\n' = True
+  isLineBreak _ = False
+
   s0 :: (String, Int, [Token]) -> [Token]
 
   -- RelOpr
@@ -37,16 +42,15 @@ module Scanner(tokenize) where
   s0 (')'       : cs, l, accu) = s0 (cs, l, (RPAREN, Nothing, (l, 0)) : accu)
 
   -- Line breaks
-  s0 ('\r' : '\n' : cs, l, accu) = s0 (cs, l + 1, accu)
-  s0 ('\n'        : cs, l, accu) = s0 (cs, l + 1, accu)
-  s0 ('\r'        : cs, l, accu) = s0 (cs, l + 1, accu)
+  s0 ('/'  : '/'  : cs, l, accu) = s0 (dropWhile (not . isLineBreak) cs, l, accu)
 
   -- Catch All
   s0 (c : cs, l, accu)
-    | isAlpha c = s0 (s1 (cs, [c], l, accu))
-    | isDigit c = s0 (s2 (cs, digitToInt c, l, accu))
-    | isSpace c = s0 (cs, l, accu)
-    | otherwise = error("Lexical error on line " ++ show l ++ ", cannot tokenize '" ++ [c] ++ "'")
+    | isAlpha c     = s0 (s1 (cs, [c], l, accu))
+    | isDigit c     = s0 (s2 (cs, digitToInt c, l, accu))
+    | isLineBreak c = s0 (cs, l + 1, accu)
+    | isSpace c     = s0 (cs, l, accu)
+    | otherwise     = error("Lexical error on line " ++ show l ++ ", cannot tokenize '" ++ [c] ++ "'")
 
   s0 ([], _, accu) = reverse ((SENTINEL, Nothing, (0, 0)) : accu)
 
