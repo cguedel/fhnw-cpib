@@ -1,5 +1,6 @@
 import Scanner
 import Parser
+import StaticAnalysis
 
 import System.Environment
 import System.Directory
@@ -17,7 +18,11 @@ parse f = do
       let tokens = tokenize contents
       do
         mapM_ print tokens
-        let cSynTree = parser tokens
-        print cSynTree
+
+        let aSynTree = parser tokens
+        print aSynTree
+
+        let analyzed = analyze aSynTree
+        print analyzed
   else
     error "File does not exist"
