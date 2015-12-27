@@ -6,7 +6,12 @@ program empty
     fun bla (a:ratio) returns y : bool
     do
       skip
-    endfun
+    endfun;
+
+    proc bla1 (a:ratio)
+    do
+      skip
+    endproc
   do
     skip;
     x := 1;

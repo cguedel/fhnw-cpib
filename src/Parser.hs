@@ -19,12 +19,6 @@ module Parser where
       _ <- tokenP term
       return ()
 
-  arithExprP :: ParserT ArithExpr
-  arithExprP =
-        litAExprP
-    +++ idAExprP
-    +++ dyaAExprP
-
   identP :: ParserT Ident
   identP = do (IDENT, Just (IdentAttrib ident), _) <- tokenP IDENT; return ident
 
@@ -62,6 +56,15 @@ module Parser where
   idAExprP :: Parser Token ArithExpr
   idAExprP = do ident <- identP; return (IdAExpr ident)
 
+  idBExprP :: Parser Token BoolExpr
+  idBExprP = do ident <- identP; return (IdBExpr ident)
+
+  arithExprP :: ParserT ArithExpr
+  arithExprP =
+        litAExprP
+    +++ idAExprP
+    +++ dyaAExprP
+
   dyaAExprP1 :: ParserT (ArithOperator, ArithExpr)
   dyaAExprP1 =
     do
@@ -84,6 +87,7 @@ module Parser where
   boolExprP :: ParserT BoolExpr
   boolExprP =
         litBExprP
+    +++ idBExprP
     +++ relBExprP
     +++ negBExprP
     +++ dyaBExprP

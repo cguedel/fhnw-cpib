@@ -35,6 +35,7 @@ module AbstractSyntax where
 
   data BoolExpr
     = LitBExpr Bool
+    | IdBExpr Ident
     | RelBExpr RelOperator ArithExpr ArithExpr
     | NegBExpr BoolExpr
     | DyaBExpr BoolOperator BoolExpr BoolExpr
