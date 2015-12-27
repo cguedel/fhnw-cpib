@@ -29,99 +29,6 @@ module Parser where
     (TYPE, Just (TypeAttrib t), _) <- tokenP TYPE;
     return (ident, t)
 
-  aLitP :: ParserT Int
-  aLitP = do (ALITERAL, Just (ALitAttrib val), _) <- tokenP ALITERAL; return val
-
-  bLitP :: ParserT Bool
-  bLitP = do (BLITERAL, Just (BLitAttrib val), _) <- tokenP BLITERAL; return val
-
-  rLitP :: ParserT Ratio
-  rLitP = do (RLITERAL, Just (RLitAttrib num denom), _) <- tokenP RLITERAL; return (num, denom)
-
-  arithOprP :: ParserT ArithOperator
-  arithOprP = do (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR; return opr
-
-  relOprP :: ParserT RelOperator
-  relOprP = do (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR; return opr
-
-  boolOprP :: ParserT BoolOperator
-  boolOprP = do (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR; return opr
-
-  ratioOprP :: ParserT RatioOperator
-  ratioOprP = do (RATIOOPR, Just (ROprAttrib opr), _) <- tokenP RATIOOPR; return opr
-
-  litAExprP :: Parser Token ArithExpr
-  litAExprP = do val <- aLitP; return (LitAExpr val)
-
-  idAExprP :: Parser Token ArithExpr
-  idAExprP = do ident <- identP; return (IdAExpr ident)
-
-  idBExprP :: Parser Token BoolExpr
-  idBExprP = do ident <- identP; return (IdBExpr ident)
-
-  arithExprP :: ParserT ArithExpr
-  arithExprP =
-        litAExprP
-    +++ idAExprP
-    +++ dyaAExprP
-
-  dyaAExprP1 :: ParserT (ArithOperator, ArithExpr)
-  dyaAExprP1 =
-    do
-      tP LPAREN
-      aExpr1 <- arithExprP
-      aOpr   <- arithOprP
-      return (aOpr, aExpr1)
-
-  dyaAExprP2 :: (ArithOperator, ArithExpr) -> ParserT ArithExpr
-  dyaAExprP2 (aOpr, aExpr1) =
-    do
-      aExpr2 <- arithExprP
-      tP RPAREN
-      return (DyaAExpr aOpr aExpr1 aExpr2)
-
-  dyaAExprP :: ParserT ArithExpr
-  dyaAExprP =
-    dyaAExprP1 >>= dyaAExprP2
-
-  boolExprP :: ParserT BoolExpr
-  boolExprP =
-        litBExprP
-    +++ idBExprP
-    +++ relBExprP
-    +++ negBExprP
-    +++ dyaBExprP
-
-  litBExprP :: Parser Token BoolExpr
-  litBExprP = do val <- bLitP; return (LitBExpr val)
-
-  relBExprP :: Parser Token BoolExpr
-  relBExprP =
-    do
-      tP LPAREN
-      aExpr1 <- arithExprP
-      rOpr   <- relOprP
-      aExpr2 <- arithExprP
-      tP RPAREN
-      return (RelBExpr rOpr aExpr1 aExpr2)
-
-  negBExprP :: Parser Token BoolExpr
-  negBExprP =
-    do
-      tP NOT
-      bExpr <- boolExprP
-      return (NegBExpr bExpr)
-
-  dyaBExprP :: Parser Token BoolExpr
-  dyaBExprP =
-    do
-      tP LPAREN
-      bExpr1 <- boolExprP
-      bOpr   <- boolOprP
-      bExpr2 <- boolExprP
-      tP RPAREN
-      return (DyaBExpr bOpr bExpr1 bExpr2)
-
   changeModeP :: Parser Token ChangeMode
   changeModeP = do (CHANGEMODE, Just (ChangeModeAttrib mode), _) <- tokenP CHANGEMODE; return mode
 
@@ -144,11 +51,11 @@ module Parser where
       tP RPAREN
       return params
 
+  globalP :: ParserT Decl
+  globalP = do tP GLOBAL; cpsDeclP;
+
   cpsDeclP :: ParserT Decl
   cpsDeclP = sepList0C declP (tP SEMICOLON) CpsDecl
-
-  cpsStoDeclP :: ParserT Decl
-  cpsStoDeclP = sepList1C stoDeclP (tP SEMICOLON) CpsDecl
 
   declP :: ParserT Decl
   declP = stoDeclP
@@ -161,6 +68,9 @@ module Parser where
       mode  <- optC changeModeP
       ident <- typedIdentP
       return (StoDecl ident mode)
+
+  cpsStoDeclP :: ParserT Decl
+  cpsStoDeclP = sepList1C stoDeclP (tP SEMICOLON) CpsDecl
 
   localP :: ParserT Decl
   localP =
@@ -194,6 +104,159 @@ module Parser where
       tP ENDPROC
       return (ProcDecl ident params locals cmd)
 
+  exprP :: ParserT Expr
+  exprP = dyadicExprP
+      +++ factorExprP
+
+  factorExprP :: ParserT Expr
+  factorExprP = funCallExprP
+            +++ literalExprP
+            +++ storeExprP
+            +++ monadicExprP
+            +++ nestedExprP
+
+  nestedExprP :: ParserT Expr
+  nestedExprP =
+    do
+      tP LPAREN
+      expr <- exprP
+      tP RPAREN
+      return expr
+
+  literalExprP :: ParserT Expr
+  literalExprP = boolLiteralP
+             +++ intLiteralP
+             +++ ratioLiteralP
+
+  boolLiteralP :: ParserT Expr
+  boolLiteralP =
+    do
+      (BLITERAL, Just (BLitAttrib val), _) <- tokenP BLITERAL
+      return (LiteralExpr (BoolVal val))
+
+  intLiteralP :: ParserT Expr
+  intLiteralP =
+    do
+      (ALITERAL, Just (ALitAttrib val), _) <- tokenP ALITERAL
+      return (LiteralExpr (IntVal val))
+
+  ratioLiteralP :: ParserT Expr
+  ratioLiteralP =
+    do
+      (RLITERAL, Just (RLitAttrib num denom), _) <- tokenP RLITERAL
+      return (LiteralExpr (RatioVal (num, denom)))
+
+  initP :: ParserT IsInitialization
+  initP =
+    do
+      tP INIT
+      return Initialization
+
+  storeExprP :: ParserT Expr
+  storeExprP =
+    do
+      ident <- identP
+      i <- optC initP
+      case i
+        of
+          Just _ -> return (StoreExpr ident Initialization)
+          _ -> return (StoreExpr ident NoInitialization)
+
+  funCallExprP :: ParserT Expr
+  funCallExprP =
+    do
+      ident <- identP
+      params <- exprListP
+      return (FunCallExpr (ident, params))
+
+  monadicExprP :: ParserT Expr
+  monadicExprP = notExprP
+             +++ plusExprP
+             +++ ratioExprP
+
+  notExprP :: ParserT Expr
+  notExprP =
+    do
+      tP NOT
+      expr <- exprP
+      return (MonadicExpr Not expr)
+
+  plusExprP :: ParserT Expr
+  plusExprP =
+    do
+      (ARITHOPR, Just (AOprAttrib IML.Plus), _) <- tokenP ARITHOPR
+      expr <- exprP
+      return (MonadicExpr AbstractSyntax.Plus expr)
+
+  ratioExprP :: ParserT Expr
+  ratioExprP =
+    do
+      (RATIOOPR, Just (ROprAttrib opr), _) <- tokenP RATIOOPR
+      expr <- exprP
+      case opr
+        of
+          IML.Denom -> return (MonadicExpr AbstractSyntax.Denom expr)
+          IML.Num -> return (MonadicExpr AbstractSyntax.Num expr)
+          IML.Floor -> return (MonadicExpr AbstractSyntax.Floor expr)
+          IML.Ceil -> return (MonadicExpr AbstractSyntax.Ceil expr)
+          IML.Round -> return (MonadicExpr AbstractSyntax.Round expr)
+
+  dyadicExprP :: ParserT Expr
+  dyadicExprP = arithExprP
+            +++ relExprP
+            +++ boolExprP
+
+  arithExprP :: ParserT Expr
+  arithExprP =
+    do
+      lExpr <- factorExprP
+      (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR
+      rExpr <- exprP
+      case opr
+        of
+          IML.Times -> return (DyadicExpr AbstractSyntax.Times lExpr rExpr)
+          IML.Div -> return (DyadicExpr AbstractSyntax.Div lExpr rExpr)
+          IML.Mod -> return (DyadicExpr AbstractSyntax.Mod lExpr rExpr)
+          IML.Plus -> return (DyadicExpr AbstractSyntax.Plus lExpr rExpr)
+          IML.Minus -> return (DyadicExpr AbstractSyntax.Minus lExpr rExpr)
+
+  relExprP :: ParserT Expr
+  relExprP =
+    do
+      lExpr <- factorExprP
+      (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR
+      rExpr <- exprP
+      case opr
+        of
+          IML.Less -> return (DyadicExpr AbstractSyntax.Less lExpr rExpr)
+          IML.LessEq -> return (DyadicExpr AbstractSyntax.LessEq lExpr rExpr)
+          IML.Greater -> return (DyadicExpr AbstractSyntax.Greater lExpr rExpr)
+          IML.GreaterEq -> return (DyadicExpr AbstractSyntax.GreaterEq lExpr rExpr)
+          IML.Equal -> return (DyadicExpr AbstractSyntax.Equal lExpr rExpr)
+          IML.NotEq -> return (DyadicExpr AbstractSyntax.NotEq lExpr rExpr)
+
+  boolExprP :: ParserT Expr
+  boolExprP =
+    do
+      lExpr <- factorExprP
+      (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR
+      rExpr <- exprP
+      case opr
+        of
+          IML.Cand -> return (DyadicExpr AbstractSyntax.CAnd lExpr rExpr)
+          IML.Cor -> return (DyadicExpr AbstractSyntax.Cor lExpr rExpr)
+
+  exprListP :: ParserT [Expr]
+  exprListP =
+    do
+      tP LPAREN
+      expr <- sepList1C exprP (tP COMMA) id
+      tP RPAREN
+      return expr
+
+  cpsCmdP :: ParserT Command
+  cpsCmdP = sepList1C commandP (tP SEMICOLON) CpsCmd
+
   commandP :: ParserT Command
   commandP = skipCmdP
          +++ assiCmdP
@@ -212,47 +275,54 @@ module Parser where
   assiCmdP :: ParserT Command
   assiCmdP =
     do
-       ident <- identP
-       tP BECOMES
-       aExpr <- arithExprP
-       return (AssiCmd ident aExpr)
+      lExpr <- exprP
+      tP BECOMES
+      rExpr <- exprP
+      return (AssiCmd lExpr rExpr)
 
   condCmdP :: ParserT Command
   condCmdP =
     do
-       tP IF
-       bExpr <- boolExprP
-       tP THEN
-       cmd1  <- cpsCmdP
-       tP ELSE
-       cmd2  <- cpsCmdP
-       tP ENDIF
-       return (CondCmd bExpr cmd1 cmd2)
+      tP IF
+      cond <- exprP
+      tP THEN
+      trueCmd <- cpsCmdP
+      tP ELSE
+      falseCmd <- cpsCmdP
+      tP ENDIF
+      return (CondCmd cond trueCmd falseCmd)
 
   whileCmdP :: ParserT Command
   whileCmdP =
     do
-       tP WHILE
-       bExpr <- boolExprP
-       tP DO
-       cmd   <- cpsCmdP
-       tP ENDWHILE
-       return (WhileCmd bExpr cmd)
+      tP WHILE
+      cond <- exprP
+      tP DO
+      cmd <- cpsCmdP
+      tP ENDWHILE
+      return (WhileCmd cond cmd)
 
   callCmdP :: ParserT Command
-  callCmdP = do tP CALL; ident <- identP; return (CallCmd ident);
+  callCmdP =
+    do
+      tP CALL
+      ident <- identP
+      paramList <- exprListP
+      return (ProcCallCmd (ident, paramList))
 
   debugInCmdP :: ParserT Command
-  debugInCmdP = do tP DEBUGIN; expr <- arithExprP; return (DebugInCmd expr);
+  debugInCmdP =
+    do
+      tP DEBUGIN
+      expr <- exprP
+      return (DebugInCmd expr)
 
   debugOutCmdP :: ParserT Command
-  debugOutCmdP = do tP DEBUGOUT; expr <- arithExprP; return (DebugOutCmd expr);
-
-  cpsCmdP :: ParserT Command
-  cpsCmdP = sepList1C commandP (tP SEMICOLON) CpsCmd
-
-  globalP :: ParserT Decl
-  globalP = do tP GLOBAL; cpsDeclP;
+  debugOutCmdP =
+    do
+      tP DEBUGOUT
+      expr <- exprP
+      return (DebugOutCmd expr)
 
   programP :: ParserT Program
   programP =

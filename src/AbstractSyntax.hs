@@ -9,15 +9,50 @@ module AbstractSyntax where
   type Program = (Command, Maybe Decl)
   type Parameter = (TypedIdent, Maybe MechMode, Maybe ChangeMode)
 
+  type RoutineCall = (Ident, [Expr])
+
+  data Value
+    = BoolVal Bool
+    | IntVal Int
+    | RatioVal Ratio
+    deriving (Show, Eq)
+
+  data IsInitialization
+    = Initialization
+    | NoInitialization
+    deriving (Show, Eq)
+
+  data Operator
+    = Not
+    | Times
+    | Div
+    | Mod
+    | Plus
+    | Minus
+    | Less
+    | GreaterEq
+    | Equal
+    | NotEq
+    | Greater
+    | LessEq
+    | CAnd
+    | Cor
+    | Denom
+    | Num
+    | Floor
+    | Ceil
+    | Round
+    deriving (Show, Eq)
+
   data Command
     = SkipCmd
     | CpsCmd [Command]
-    | AssiCmd Ident ArithExpr
-    | CondCmd BoolExpr Command Command
-    | WhileCmd BoolExpr Command
-    | CallCmd Ident
-    | DebugInCmd ArithExpr
-    | DebugOutCmd ArithExpr
+    | AssiCmd Expr Expr
+    | CondCmd Expr Command Command
+    | WhileCmd Expr Command
+    | ProcCallCmd RoutineCall
+    | DebugInCmd Expr
+    | DebugOutCmd Expr
     deriving (Show, Eq)
 
   data Decl
@@ -27,16 +62,10 @@ module AbstractSyntax where
     | ProcDecl Ident [Parameter] (Maybe Decl) Command
     deriving (Show, Eq)
 
-  data ArithExpr
-    = LitAExpr Int
-    | IdAExpr Ident
-    | DyaAExpr ArithOperator ArithExpr ArithExpr
+  data Expr
+    = LiteralExpr Value
+    | StoreExpr Ident IsInitialization
+    | FunCallExpr RoutineCall
+    | MonadicExpr Operator Expr
+    | DyadicExpr Operator Expr Expr
     deriving (Show, Eq)
-
-  data BoolExpr
-    = LitBExpr Bool
-    | IdBExpr Ident
-    | RelBExpr RelOperator ArithExpr ArithExpr
-    | NegBExpr BoolExpr
-    | DyaBExpr BoolOperator BoolExpr BoolExpr
-    deriving (Eq, Show)

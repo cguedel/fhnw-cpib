@@ -1,0 +1,8 @@
+program Assoc
+  global
+    x:int
+  do
+  debugout (4 divE 4) * 5;
+  debugout 4 divE 4 * 5;
+  debugout (3 * 5) > 5
+endprogram
