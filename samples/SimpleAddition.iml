@@ -1,0 +1,4 @@
+program SimpleAddition
+do
+  debugout 1 + 2
+endprogram
