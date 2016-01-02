@@ -28,7 +28,21 @@ module StaticAnalysis (analyze) where
   cmdChecker (SkipCmd) = SkipCmd
 
   exprChecker :: Expr -> Expr
+  exprChecker (LiteralExpr x, _) = (LiteralExpr x, Just $ getLitExprType x)
+  exprChecker (MonadicExpr opr expr, _) = (MonadicExpr opr expr, Just $ getMonadicOprType opr expr)
   exprChecker x = x
+
+  getLitExprType :: Value -> Type
+  getLitExprType (BoolVal _) = BoolType
+  getLitExprType (RatioVal _) = RatioType
+  getLitExprType (IntVal _) = IntType
+
+  getMonadicOprType :: Operator -> Expr -> Type
+  getMonadicOprType opr expr =
+    if isRatioOperator opr then
+      let _ = checkRatioExpr expr in RatioType
+    else
+      IntType
 
   checkBoolExpr :: Expr -> Expr
   checkBoolExpr expr =
@@ -37,13 +51,23 @@ module StaticAnalysis (analyze) where
     else
       error "Expected boolean expression"
 
+  checkRatioExpr :: Expr -> Expr
+  checkRatioExpr expr =
+    if isRatioExpr expr then
+      expr
+    else
+      error "Expected rational expression"
+
+  isRatioExpr :: Expr -> Bool
+  isRatioExpr _ = True
+
   isBoolExpr :: Expr -> Bool
-  isBoolExpr (LiteralExpr (BoolVal _)) = True
-  isBoolExpr (LiteralExpr _) = False
-  isBoolExpr (DyadicExpr opr expr1 expr2) = opr `elem` [CAnd, Cor, Less, LessEq, Equal, NotEq, Greater, GreaterEq] && isBoolExpr expr1 && isBoolExpr expr2
-  isBoolExpr (MonadicExpr opr expr) = opr == Not && isBoolExpr expr
-  isBoolExpr (StoreExpr ident _) = isBoolIdent ident
-  isBoolExpr (FunCallExpr (ident, _)) = isBoolFunction ident
+  isBoolExpr (LiteralExpr (BoolVal _), _) = True
+  isBoolExpr (LiteralExpr _, _) = False
+  isBoolExpr (DyadicExpr opr expr1 expr2, _) = opr `elem` [CAnd, Cor, Less, LessEq, Equal, NotEq, Greater, GreaterEq] && isBoolExpr expr1 && isBoolExpr expr2
+  isBoolExpr (MonadicExpr opr expr, _) = opr == Not && isBoolExpr expr
+  isBoolExpr (StoreExpr ident _, _) = isBoolIdent ident
+  isBoolExpr (FunCallExpr (ident, _), _) = isBoolFunction ident
   isBoolExpr _ = False
 
   isBoolIdent :: Ident -> Bool
@@ -51,6 +75,9 @@ module StaticAnalysis (analyze) where
 
   isBoolFunction :: Ident -> Bool
   isBoolFunction _ = True
+
+  isRatioOperator :: Operator -> Bool
+  isRatioOperator x = x `elem` [Num, Denom, Floor, Ceil, Round]
 
   checkExprTypeCompatible :: (Expr, Expr) -> (Expr, Expr)
   checkExprTypeCompatible (e1, e2) = (e1, e2)

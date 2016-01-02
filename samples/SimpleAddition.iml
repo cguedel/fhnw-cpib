@@ -1,4 +1,8 @@
 program SimpleAddition
 do
-  debugout 1 + 2
+  debugout (denum 1/2);
+  debugout (num 3/4);
+  debugout (floor 5/6);
+  debugout (round 7/8);
+  debugout (ceil 9/10)
 endprogram

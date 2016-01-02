@@ -85,7 +85,7 @@ module Scanner(tokenize) where
   s5 :: (String, Position) -> Token
   s5 (key, p) =
     case key of
-      "bool"        -> (TYPE,       Just (TypeAttrib BOOL), p)
+      "bool"        -> (TYPE,       Just (TypeAttrib BoolType), p)
       "call"        -> (CALL,       Nothing, p)
       "ceil"        -> (RATIOOPR,   Just (ROprAttrib Ceil), p)
       "const"       -> (CHANGEMODE, Just (ChangeModeAttrib CONST), p)
@@ -107,14 +107,14 @@ module Scanner(tokenize) where
       "global"      -> (GLOBAL,     Nothing, p)
       "if"          -> (IF,         Nothing, p)
       "init"        -> (INIT,       Nothing, p)
-      "int"         -> (TYPE,       Just (TypeAttrib INT), p)
+      "int"         -> (TYPE,       Just (TypeAttrib IntType), p)
       "local"       -> (LOCAL,      Nothing, p)
       "modE"        -> (ARITHOPR,   Just (AOprAttrib Mod), p)
       "not"         -> (NOT,        Nothing, p)
       "num"         -> (RATIOOPR,   Just (ROprAttrib Num), p)
       "proc"        -> (PROC,       Nothing, p)
       "program"     -> (PROGRAM,    Nothing, p)
-      "ratio"       -> (TYPE,       Just (TypeAttrib RATIO), p)
+      "ratio"       -> (TYPE,       Just (TypeAttrib RatioType), p)
       "ref"         -> (MECHMODE,   Just (MechModeAttrib REF), p)
       "returns"     -> (RETURNS,    Nothing, p)
       "round"       -> (RATIOOPR,   Just (ROprAttrib Round), p)

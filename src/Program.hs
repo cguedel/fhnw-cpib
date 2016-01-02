@@ -18,19 +18,19 @@ parse f = do
       contents <- readFile $ head f
       let tokens = tokenize contents
       do
-        print "-------- Tokens --------"
+        putStrLn "-------- Tokens --------"
         mapM_ print tokens
 
         let aSynTree = parser tokens
-        print "-------- Abstract syntax tree --------"
+        putStrLn "-------- Abstract syntax tree --------"
         print aSynTree
 
         let analyzed = analyze aSynTree
-        print "-------- Type checked abstract syntax tree --------"
+        putStrLn "-------- Type checked abstract syntax tree --------"
         print analyzed
 
         let code = genCode analyzed
-        print "-------- Generated instructions --------"
-        mapM_ print code
+        putStrLn "-------- Generated instructions --------"
+        mapM_ putStrLn code
   else
     error "File does not exist"

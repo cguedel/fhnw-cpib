@@ -40,7 +40,7 @@ module IML where
     deriving (Show, Eq)
 
   data Type
-    = BOOL | INT | RATIO
+    = BoolType | IntType | RatioType
     deriving (Show, Eq)
 
   data MechMode
