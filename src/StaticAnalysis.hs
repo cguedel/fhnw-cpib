@@ -40,7 +40,7 @@ module StaticAnalysis (analyze) where
   getMonadicOprType :: Operator -> Expr -> Type
   getMonadicOprType opr expr =
     if isRatioOperator opr then
-      let _ = checkRatioExpr expr in RatioType
+      let _ = checkRatioExpr expr in IntType
     else
       IntType
 

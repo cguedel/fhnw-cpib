@@ -27,7 +27,7 @@ module CodeGenerator where
   genOutputCmd RatioType = "OutputRatio"
 
   genCodeExpr :: Expr -> [String]
-  genCodeExpr (MonadicExpr opr expr, Just RatioType) = genRatioOprCode opr : genCodeExpr expr
+  genCodeExpr (MonadicExpr opr expr, Just IntType) = genRatioOprCode opr : genCodeExpr expr
   genCodeExpr (DyadicExpr Plus e1 e2, _) = "AddInt" : genCodeExpr e2 ++ genCodeExpr e1
   genCodeExpr (LiteralExpr val, Just RatioType) = ["LoadImRatio(" ++ genLiteral val ++ ")"]
   genCodeExpr (LiteralExpr val, _) = ["LoadImInt(" ++ genLiteral val ++ ")"]
