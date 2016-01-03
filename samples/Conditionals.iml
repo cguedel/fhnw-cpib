@@ -1,0 +1,10 @@
+program Conditionals
+do
+
+  if (denum 1/2) >= 2 then
+    debugout true
+  else
+    debugout false
+  endif
+
+endprogram
