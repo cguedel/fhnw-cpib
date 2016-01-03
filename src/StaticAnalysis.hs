@@ -18,7 +18,7 @@ module StaticAnalysis (analyze) where
   cmdChecker (DebugOutCmd expr) = DebugOutCmd (exprChecker expr)
   cmdChecker (CpsCmd cmds) = CpsCmd (map cmdChecker cmds)
   cmdChecker (SkipCmd) = SkipCmd
-  cmdChecker (CondCmd expr cmd1 cmd2) = CondCmd expr cmd1 cmd2
+  cmdChecker (CondCmd expr cmd1 cmd2) = CondCmd (exprChecker expr) (cmdChecker cmd1) (cmdChecker cmd2)
 
   exprChecker :: Expr -> Expr
   exprChecker (expr, _) = (exprTypeChecker expr, Just $ getExprType expr)
