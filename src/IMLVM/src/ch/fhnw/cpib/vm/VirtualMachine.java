@@ -231,6 +231,14 @@ public class VirtualMachine implements IVirtualMachine {
         }
     }
     
+    public class NegBoolExec extends NegBool implements IExecInstr {
+    	public void execute()
+    	{
+    		store[sp-1]= Data.boolInv(store[sp-1]);
+    		pc= pc + 1;
+    	}
+    }
+    
     public class NumRatioExec extends NumRatio implements IExecInstr {
     	public void execute()
     	{

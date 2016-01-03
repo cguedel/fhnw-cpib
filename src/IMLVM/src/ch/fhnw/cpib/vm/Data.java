@@ -95,7 +95,7 @@ public class Data
     // coding booleans as integers
     static boolean boolGet(IBaseData a)
     {
-        return ((IntData)a).getData() != 0;
+        return ((IntData)a).getData() == 1;
     }
 
     static class FloatData implements IBaseData
@@ -129,6 +129,11 @@ public class Data
     static FloatData floatInv(IBaseData a)
     {
         return floatNew(-floatGet(a));
+    }
+    
+    static IntData boolInv(IBaseData a)
+    {
+    	return boolNew(!boolGet(a));
     }
     
     static RatioData ratioInv(IBaseData a)

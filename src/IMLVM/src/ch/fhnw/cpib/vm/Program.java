@@ -127,6 +127,8 @@ public class Program {
 			return new IInstructions.MultInt();
 		case "MultRatio":
 			return new IInstructions.MultRatio();
+		case "NegBool":
+			return new IInstructions.NegBool();
 		case "NegInt":
 			return new IInstructions.NegInt();
 		case "NegRatio":

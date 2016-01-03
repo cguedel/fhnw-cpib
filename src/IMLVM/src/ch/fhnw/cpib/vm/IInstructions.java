@@ -136,6 +136,13 @@ public interface IInstructions {
         }
     }
     
+    class NegBool implements IInstr {
+    	public String toString() { return "NegBool"; }
+    	public IExecInstr toExecInstr(VirtualMachine vm) {
+    		return vm.new NegBoolExec();
+    	}
+    }
+    
     class NumRatio implements IInstr {
     	public String toString() { return "NumRatio"; }
     	public IExecInstr toExecInstr(VirtualMachine vm) {
