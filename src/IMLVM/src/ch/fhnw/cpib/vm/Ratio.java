@@ -54,4 +54,12 @@ public class Ratio {
 
 		return getGcd(b, a % b);
 	}
+
+	public static Ratio fromString(String arg) {
+		int separatorPos = arg.indexOf('/');
+		int numerator = Integer.parseInt(arg.substring(0, separatorPos));
+		int denominator = Integer.parseInt(arg.substring(separatorPos + 1));
+		
+		return new Ratio(numerator, denominator);
+	}
 }

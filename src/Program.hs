@@ -10,12 +10,11 @@ main :: IO()
 main = getArgs >>= parse
 
 parse :: [String] -> IO ()
-parse [] = error "Invalid cmdline arguments, usage: iml.exe <file>"
-parse f = do
-  exists <- doesFileExist $ head f
+parse (fIn : fOut : _) = do
+  exists <- doesFileExist fIn
   if exists then
     do
-      contents <- readFile $ head f
+      contents <- readFile fIn
       let tokens = tokenize contents
       do
         putStrLn "-------- Tokens --------"
@@ -32,5 +31,9 @@ parse f = do
         let code = genCode analyzed
         putStrLn "-------- Generated instructions --------"
         mapM_ putStrLn code
+
+        putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
+        writeFile fOut $ unlines code
   else
     error "File does not exist"
+parse _ = error "Invalid cmdline arguments, usage: iml.exe <file> <output>"

@@ -1,76 +1,89 @@
 package ch.fhnw.cpib.vm;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
 import ch.fhnw.cpib.vm.ICodeArray.CodeTooSmallError;
+import ch.fhnw.cpib.vm.IInstructions.IInstr;
 import ch.fhnw.cpib.vm.IVirtualMachine.ExecutionError;
 
 public class Program {
 
 	public static void main(String[] args) throws CodeTooSmallError,
-			ExecutionError {
-		// TODO Auto-generated method stub
-		CodeArray code = new CodeArray(5);
-		code.put(0, new IInstructions.LoadImInt(50));
-		code.put(1, new IInstructions.LoadImInt(-51));
-		code.put(2, new IInstructions.AddInt());
-		code.put(3, new IInstructions.OutputInt("x"));
-		code.put(4, new IInstructions.Stop());
+			ExecutionError, IOException {
 
-		new VirtualMachine(code, 20);
-
-		CodeArray code2 = new CodeArray(3);
-		code2.put(0, new IInstructions.LoadImInt(1));
-		code2.put(1, new IInstructions.OutputBool(""));
-		code2.put(2, new IInstructions.Stop());
-
-		new VirtualMachine(code2, 20);
-
-		CodeArray code3 = new CodeArray(3);
-		code3.put(0, new IInstructions.LoadImRatio(new Ratio(34, 34)));
-		code3.put(1, new IInstructions.OutputRatio(""));
-		code3.put(2, new IInstructions.Stop());	
+		args = new String[] { "C:\\Users\\cg\\Documents\\Documents\\FHNW\\cpib\\code\\build\\code.txt" };
 		
-		new VirtualMachine(code3, 20);
+		if (args.length != 1)
+		{
+			System.err.println("Expected path as argument");
+			System.exit(1);
+		}
 		
-		CodeArray code4 = new CodeArray(4);
-		code4.put(0, new IInstructions.LoadImRatio(new Ratio(3, 4)));
-		code4.put(1, new IInstructions.CeilRatio());
-		code4.put(2, new IInstructions.OutputInt(""));
-		code4.put(3, new IInstructions.Stop());
+		File codeFile = new File(args[0]);
+		if (!codeFile.exists())
+		{
+			System.err.println("File does not exist: " + args[0]);
+			System.exit(1);
+		}
 		
-		new VirtualMachine(code4, 20);
+		FileInputStream fStream = new FileInputStream(args[0]);
+		BufferedReader br = new BufferedReader(new InputStreamReader(fStream));
 		
-		CodeArray code5 = new CodeArray(7);
-		code5.put(0, new IInstructions.LoadImRatio(new Ratio(1, 432)));
-		code5.put(1, new IInstructions.DenomRatio());
-		code5.put(2, new IInstructions.LoadImRatio(new Ratio(1, 242)));
-		code5.put(3, new IInstructions.DenomRatio());
-		code5.put(4, new IInstructions.AddInt());
-		code5.put(5, new IInstructions.OutputInt(""));
-		code5.put(6, new IInstructions.Stop());
+		String strLine;
+		List<String> instr = new ArrayList<String>();
 		
-		new VirtualMachine(code5, 20);
+		while ((strLine = br.readLine()) != null)
+		{
+			instr.add(strLine);
+		}
 		
-		CodeArray code6 = new CodeArray(5);
-		code6.put(0, new IInstructions.LoadImRatio(new Ratio(1, 2)));
-		code6.put(1, new IInstructions.LoadImRatio(new Ratio(2, 5)));
-		code6.put(2, new IInstructions.AddRatio());
-		code6.put(3, new IInstructions.OutputRatio(""));
-		code6.put(4, new IInstructions.Stop());
+		br.close();
+		fStream.close();
 		
-		new VirtualMachine(code6, 20);
+		CodeArray code = new CodeArray(instr.size());
+		for (int i = 0; i < instr.size(); i++)
+		{
+			IInstr c = getInstrFromString(instr.get(i));
+			System.out.println("[" + i + "] = " + c);
+			code.put(i, c);
+		}
 		
-		CodeArray code7 = new CodeArray(9);
-		code7.put(0, new IInstructions.LoadImRatio(new Ratio(1, 1)));
-		code7.put(1, new IInstructions.DenomRatio());
-		code7.put(2, new IInstructions.LoadImRatio(new Ratio(1, 3)));
-		code7.put(3, new IInstructions.DenomRatio());
-		code7.put(4, new IInstructions.AddInt());
-		code7.put(5, new IInstructions.LoadImInt(3));
-		code7.put(6, new IInstructions.GtInt());
-		code7.put(7, new IInstructions.OutputBool(""));
-		code7.put(8, new IInstructions.Stop());
-		
-		new VirtualMachine(code7, 20);
+		new VirtualMachine(code, 1024);
 	}
 
+	private static IInstr getInstrFromString(String instr)
+	{
+		int instrNameLength = instr.indexOf('(');
+		String instrName = instr.substring(0, instrNameLength > 0 ? instrNameLength : instr.length());
+		
+		instr = instr.substring(0, instr.length() - 1);
+		String arg = instrNameLength > 0 ? instr.substring(instrNameLength + 1) : "";
+		
+		switch (instrName)
+		{
+			case "LoadImRatio":
+				return new IInstructions.LoadImRatio(Ratio.fromString(arg));
+			case "DenomRatio":
+				return new IInstructions.DenomRatio();
+			case "AddInt":
+				return new IInstructions.AddInt();
+			case "LoadImInt":
+				return new IInstructions.LoadImInt(Integer.parseInt(arg));
+			case "GtInt":
+				return new IInstructions.GtInt();
+			case "OutputBool":
+				return new IInstructions.OutputBool(arg);
+			case "Stop":
+				return new IInstructions.Stop();
+		}
+		
+		throw new UnsupportedOperationException();
+	}
 }
