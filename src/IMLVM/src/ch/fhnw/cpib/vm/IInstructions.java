@@ -172,6 +172,13 @@ public interface IInstructions {
             return vm.new AddIntExec();
         }
     }
+    
+    class AddRatio implements IInstr {
+    	public String toString() { return "AddRatio"; }
+    	public IExecInstr toExecInstr(VirtualMachine vm) {
+    		return vm.new AddRatioExec();
+    	}
+    }
 
     class SubInt implements IInstr {
         public String toString() { return "SubInt"; }

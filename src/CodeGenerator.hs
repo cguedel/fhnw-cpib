@@ -28,7 +28,9 @@ module CodeGenerator where
 
   genCodeExpr :: Expr -> [String]
   genCodeExpr (MonadicExpr opr expr, Just IntType) = genRatioOprCode opr : genCodeExpr expr
-  genCodeExpr (DyadicExpr Plus e1 e2, _) = "AddInt" : genCodeExpr e2 ++ genCodeExpr e1
+  genCodeExpr (DyadicExpr opr expr1 expr2, Just RatioType) = genRatioOprCode opr : genCodeExpr expr2 ++ genCodeExpr expr1
+  genCodeExpr (DyadicExpr opr expr1 expr2, Just IntType) = genIntOprCode opr : genCodeExpr expr2 ++ genCodeExpr expr1
+  genCodeExpr (DyadicExpr opr expr1 expr2, Just BoolType) = genBoolOprCode opr : genCodeExpr expr2 ++ genCodeExpr expr1
   genCodeExpr (LiteralExpr val, Just RatioType) = ["LoadImRatio(" ++ genLiteral val ++ ")"]
   genCodeExpr (LiteralExpr val, _) = ["LoadImInt(" ++ genLiteral val ++ ")"]
 
@@ -38,7 +40,13 @@ module CodeGenerator where
   genRatioOprCode Floor = "FloorRatio"
   genRatioOprCode Ceil = "CeilRatio"
   genRatioOprCode Round = "RoundRatio"
-  genRatioOprCode _ = error "Internal error"
+  genRatioOprCode Plus = "AddRatio"
+
+  genBoolOprCode :: Operator -> String
+  genBoolOprCode Greater = "GtInt"
+
+  genIntOprCode :: Operator -> String
+  genIntOprCode Plus = "AddInt"
 
   genLiteral :: Value -> String
   genLiteral (IntVal i) = show i

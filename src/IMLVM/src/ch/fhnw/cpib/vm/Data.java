@@ -130,6 +130,11 @@ public class Data
     {
         return intNew(intGet(a) + intGet(b));
     }
+    
+    static RatioData ratioAdd(IBaseData a, IBaseData b)
+    {
+    	return ratioNew(Ratio.add(ratioGet(a), ratioGet(b)));
+    }
 
     static IntData intSub(IBaseData a, IBaseData b)
     {

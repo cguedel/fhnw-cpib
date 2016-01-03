@@ -270,6 +270,15 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
+    
+    public class AddRatioExec extends AddRatio implements IExecInstr {
+    	public void execute()
+    	{
+    		sp= sp - 1;
+    		store[sp-1]= Data.ratioAdd(store[sp-1], store[sp]);
+    		pc= pc + 1;
+    	}
+    }
 
     public class SubIntExec extends SubInt implements IExecInstr {
         public void execute()
