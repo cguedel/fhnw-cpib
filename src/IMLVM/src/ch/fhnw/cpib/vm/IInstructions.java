@@ -129,6 +129,13 @@ public interface IInstructions {
         }
     }
     
+    class NegRatio implements IInstr {
+        public String toString() { return "NegRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new NegRatioExec();
+        }
+    }
+    
     class NumRatio implements IInstr {
     	public String toString() { return "NumRatio"; }
     	public IExecInstr toExecInstr(VirtualMachine vm) {
@@ -186,6 +193,13 @@ public interface IInstructions {
             return vm.new SubIntExec();
         }
     }
+    
+    class SubRatio implements IInstr {
+        public String toString() { return "SubRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new SubRatioExec();
+        }
+    }
 
     class MultInt implements IInstr {
         public String toString() { return "MultInt"; }
@@ -193,11 +207,25 @@ public interface IInstructions {
             return vm.new MultIntExec();
         }
     }
+    
+    class MultRatio implements IInstr {
+        public String toString() { return "MultRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new MultRatioExec();
+        }
+    }
 
     class DivTruncInt implements IInstr {
         public String toString() { return "DivTruncInt"; }
         public IExecInstr toExecInstr(VirtualMachine vm) {
             return vm.new DivTruncIntExec();
+        }
+    }
+    
+    class DivTruncRatio implements IInstr {
+        public String toString() { return "DivTruncRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new DivTruncRatioExec();
         }
     }
 
@@ -214,11 +242,25 @@ public interface IInstructions {
             return vm.new EqIntExec();
         }
     }
+    
+    class EqRatio implements IInstr {
+    	public String toString() { return "EqRatio"; }
+    	public IExecInstr toExecInstr(VirtualMachine vm) {
+    		return vm.new EqRatioExec();
+    	}
+    }
 
     class NeInt implements IInstr {
         public String toString() { return "NeInt"; }
         public IExecInstr toExecInstr(VirtualMachine vm) {
             return vm.new NeIntExec();
+        }
+    }
+    
+    class NeRatio implements IInstr {
+    	public String toString() { return "NeRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new NeRatioExec();
         }
     }
 
@@ -228,11 +270,25 @@ public interface IInstructions {
             return vm.new GtIntExec();
         }
     }
+    
+    class GtRatio implements IInstr {
+    	public String toString() { return "GtRatio"; }
+    	public IExecInstr toExecInstr(VirtualMachine vm) {
+    		return vm.new GtRatioExec();
+    	}
+    }
 
     class LtInt implements IInstr {
         public String toString() { return "LtInt"; }
         public IExecInstr toExecInstr(VirtualMachine vm) {
             return vm.new LtIntExec();
+        }
+    }
+    
+    class LtRatio implements IInstr {
+        public String toString() { return "LtRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new LtRatioExec();
         }
     }
 
@@ -242,11 +298,25 @@ public interface IInstructions {
             return vm.new GeIntExec();
         }
     }
+    
+    class GeRatio implements IInstr {
+        public String toString() { return "GeRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new GeRatioExec();
+        }
+    }
 
     class LeInt implements IInstr {
         public String toString() { return "LeInt"; }
         public IExecInstr toExecInstr(VirtualMachine vm) {
             return vm.new LeIntExec();
+        }
+    }
+    
+    class LeRatio implements IInstr {
+        public String toString() { return "LeRatio"; }
+        public IExecInstr toExecInstr(VirtualMachine vm) {
+            return vm.new LeRatioExec();
         }
     }
 

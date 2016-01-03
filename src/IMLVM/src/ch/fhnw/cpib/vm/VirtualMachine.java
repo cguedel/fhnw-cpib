@@ -223,6 +223,14 @@ public class VirtualMachine implements IVirtualMachine {
         }
     }
     
+    public class NegRatioExec extends NegRatio implements IExecInstr {
+        public void execute()
+        {
+            store[sp-1]= Data.ratioInv(store[sp-1]);
+            pc= pc + 1;
+        }
+    }
+    
     public class NumRatioExec extends NumRatio implements IExecInstr {
     	public void execute()
     	{
@@ -288,12 +296,30 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
+    
+    public class SubRatioExec extends SubRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioSub(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
 
     public class MultIntExec extends MultInt implements IExecInstr {
         public void execute()
         {
             sp= sp - 1;
             store[sp-1]= Data.intMult(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
+    
+    public class MultRatioExec extends MultRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioMult(store[sp-1], store[sp]);
             pc= pc + 1;
         }
     }
@@ -306,6 +332,15 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
+    
+    public class DivTruncRatioExec extends DivTruncRatio implements IExecInstr {
+        public void execute() throws ExecutionError
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioDivTrunc(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
 
     public class ModTruncIntExec extends ModTruncInt implements IExecInstr {
         public void execute() throws ExecutionError
@@ -315,12 +350,21 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
-
+    
     public class EqIntExec extends EqInt implements IExecInstr {
         public void execute()
         {
             sp= sp - 1;
             store[sp-1]= Data.intEQ(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
+    
+    public class EqRatioExec extends EqRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioEQ(store[sp-1], store[sp]);
             pc= pc + 1;
         }
     }
@@ -333,12 +377,30 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
+    
+    public class NeRatioExec extends NeRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioNE(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
 
     public class GtIntExec extends GtInt implements IExecInstr {
         public void execute()
         {
             sp= sp - 1;
             store[sp-1]= Data.intGT(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
+    
+    public class GtRatioExec extends GtRatio implements IExecInstr {
+    	public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioGT(store[sp-1], store[sp]);
             pc= pc + 1;
         }
     }
@@ -351,6 +413,15 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
+    
+    public class LtRatioExec extends LtRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioLT(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
 
     public class GeIntExec extends GeInt implements IExecInstr {
         public void execute()
@@ -360,12 +431,30 @@ public class VirtualMachine implements IVirtualMachine {
             pc= pc + 1;
         }
     }
+    
+    public class GeRatioExec extends GeRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioGE(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
 
     public class LeIntExec extends LeInt implements IExecInstr {
         public void execute()
         {
             sp= sp - 1;
             store[sp-1]= Data.intLE(store[sp-1], store[sp]);
+            pc= pc + 1;
+        }
+    }
+    
+    public class LeRatioExec extends LeRatio implements IExecInstr {
+        public void execute()
+        {
+            sp= sp - 1;
+            store[sp-1]= Data.ratioLE(store[sp-1], store[sp]);
             pc= pc + 1;
         }
     }
