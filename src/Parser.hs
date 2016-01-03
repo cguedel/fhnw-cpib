@@ -184,9 +184,9 @@ module Parser where
   plusExprP :: ParserT Expr
   plusExprP =
     do
-      (ARITHOPR, Just (AOprAttrib IML.Plus), _) <- tokenP ARITHOPR
+      (ARITHOPR, Just (AOprAttrib IML.Minus), _) <- tokenP ARITHOPR
       expr <- exprP
-      return (MonadicExpr Plus expr, Nothing)
+      return (MonadicExpr Minus expr, Nothing)
 
   ratioExprP :: ParserT Expr
   ratioExprP =

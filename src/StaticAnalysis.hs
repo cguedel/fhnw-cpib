@@ -13,19 +13,12 @@ module StaticAnalysis (analyze) where
   typeChecker (cmd, decl) = (cmdChecker cmd, decl)
 
   cmdChecker :: Command -> Command
-  --cmdChecker (AssiCmd lExpr rExpr) =
-  --  do
-  --    let (lExpr',rExpr') = checkExprTypeCompatible (lExpr, rExpr)
-  --    AssiCmd lExpr' rExpr'
-
-  --cmdChecker (CondCmd cond cmd1 cmd2) = CondCmd (checkBoolExpr cond) (cmdChecker cmd1) (cmdChecker cmd2)
-  --cmdChecker (WhileCmd cond cmd) = WhileCmd (checkBoolExpr cond) (cmdChecker cmd)
-
   cmdChecker (ProcCallCmd (ident, params)) = ProcCallCmd (ident, params)
   cmdChecker (DebugInCmd expr) = DebugInCmd (exprChecker expr)
   cmdChecker (DebugOutCmd expr) = DebugOutCmd (exprChecker expr)
   cmdChecker (CpsCmd cmds) = CpsCmd (map cmdChecker cmds)
   cmdChecker (SkipCmd) = SkipCmd
+  cmdChecker (CondCmd expr cmd1 cmd2) = CondCmd expr cmd1 cmd2
 
   exprChecker :: Expr -> Expr
   exprChecker (expr, _) = (exprTypeChecker expr, Just $ getExprType expr)
@@ -45,6 +38,7 @@ module StaticAnalysis (analyze) where
 
   getExprType (DyadicExpr opr (expr1, _) (expr2, _))
     | isExprTypeCompatible expr1Type expr2Type && isOperatorCompatible opr compatibleType = getOperatorResultType opr compatibleType
+    | otherwise = error $ "Type error in dyadic expression, " ++ show expr1Type ++ " not assignment compatible with " ++ show expr2Type
     where
       expr1Type = getExprType expr1
       expr2Type = getExprType expr2
@@ -73,7 +67,8 @@ module StaticAnalysis (analyze) where
 
   getOperatorResultType :: Operator -> Type -> Type
   getOperatorResultType opr t
-    | opr `elem` [Plus, Minus, Times, Div, Mod] = t
+    | opr `elem` [Plus, Minus, Times, Mod] = t
+    | opr == Div = RatioType -- Handle divisions as rational numbers -> needed for type inference
     | isRatioOperator opr = IntType
     | otherwise = BoolType
 
