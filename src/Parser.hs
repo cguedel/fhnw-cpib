@@ -132,19 +132,19 @@ module Parser where
   boolLiteralP =
     do
       (BLITERAL, Just (BLitAttrib val), _) <- tokenP BLITERAL
-      return (LiteralExpr (BoolVal val), Just BoolType)
+      return (LiteralExpr (BoolVal val))
 
   intLiteralP :: ParserT Expr
   intLiteralP =
     do
       (ALITERAL, Just (ALitAttrib val), _) <- tokenP ALITERAL
-      return (LiteralExpr (IntVal val), Just IntType)
+      return (LiteralExpr (IntVal val))
 
   ratioLiteralP :: ParserT Expr
   ratioLiteralP =
     do
       (RLITERAL, Just (RLitAttrib num denom), _) <- tokenP RLITERAL
-      return (LiteralExpr (RatioVal (num, denom)), Just RatioType)
+      return (LiteralExpr (RatioVal (num, denom)))
 
   initP :: ParserT IsInitialization
   initP =
@@ -159,15 +159,15 @@ module Parser where
       i <- optC initP
       case i
         of
-          Just _ -> return (StoreExpr ident Initialization, Nothing)
-          _ -> return (StoreExpr ident NoInitialization, Nothing)
+          Just _ -> return (StoreExpr ident Initialization)
+          _ -> return (StoreExpr ident NoInitialization)
 
   funCallExprP :: ParserT Expr
   funCallExprP =
     do
       ident <- identP
       params <- exprListP
-      return (FunCallExpr (ident, params), Nothing)
+      return (FunCallExpr (ident, params))
 
   monadicExprP :: ParserT Expr
   monadicExprP = notExprP
@@ -179,21 +179,24 @@ module Parser where
     do
       tP NOT
       expr <- exprP
-      return (MonadicExpr Not expr, Nothing)
+      return (MonadicExpr Not expr)
 
   plusExprP :: ParserT Expr
   plusExprP =
     do
-      (ARITHOPR, Just (AOprAttrib IML.Minus), _) <- tokenP ARITHOPR
+      (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR
       expr <- exprP
-      return (MonadicExpr Minus expr, Nothing)
+      case opr of
+        IML.Plus -> return (MonadicExpr Plus expr)
+        IML.Minus -> return (MonadicExpr Minus expr)
+        _ -> error "Parse error, unknown monadic operator"
 
   ratioExprP :: ParserT Expr
   ratioExprP =
     do
       (RATIOOPR, Just (ROprAttrib opr), _) <- tokenP RATIOOPR
       expr <- exprP
-      return (MonadicExpr opr expr, Nothing)
+      return (MonadicExpr opr expr)
 
   dyadicExprP :: ParserT Expr
   dyadicExprP = arithExprP
@@ -206,7 +209,7 @@ module Parser where
       lExpr <- factorExprP
       (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR
       rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr, Nothing)
+      return (DyadicExpr opr lExpr rExpr)
 
   relExprP :: ParserT Expr
   relExprP =
@@ -214,7 +217,7 @@ module Parser where
       lExpr <- factorExprP
       (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR
       rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr, Nothing)
+      return (DyadicExpr opr lExpr rExpr)
 
   boolExprP :: ParserT Expr
   boolExprP =
@@ -222,7 +225,7 @@ module Parser where
       lExpr <- factorExprP
       (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR
       rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr, Nothing)
+      return (DyadicExpr opr lExpr rExpr)
 
   exprListP :: ParserT [Expr]
   exprListP =

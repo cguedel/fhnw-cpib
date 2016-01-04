@@ -1,7 +1,7 @@
 import Scanner
 import Parser
 import StaticAnalysis
-import CodeGenerator
+--import CodeGenerator
 
 import System.Environment
 import System.Directory
@@ -28,14 +28,14 @@ parse (fIn : fOut : _) = do
         putStrLn "-------- Type checked abstract syntax tree --------"
         print analyzed
 
-        let code = genCode analyzed
-        let indexed = zip code [0..]
-        let numbered = map (\(c, i) -> "[" ++ show i ++ "]" ++ c) indexed
-        putStrLn "-------- Generated instructions --------"
-        mapM_ putStrLn numbered
+        --let code = genCode analyzed
+        --let indexed = zip code [0..]
+        --let numbered = map (\(c, i) -> "[" ++ show i ++ "]" ++ c) indexed
+        --putStrLn "-------- Generated instructions --------"
+        --mapM_ putStrLn numbered
 
-        putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
-        writeFile fOut $ unlines code
+        --putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
+        --writeFile fOut $ unlines code
   else
     error "File does not exist"
 parse _ = error "Invalid cmdline arguments, usage: iml.exe <file> <output>"
