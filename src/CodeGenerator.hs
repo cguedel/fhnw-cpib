@@ -14,31 +14,28 @@ module CodeGenerator where
   genCode :: Program -> [String]
   genCode (CpsCmd cs, decl) =
     let
-      (ctx, declCmds) = genDecls decl
+      (ctx, declCmds) = genDecls decl Nothing
       programBody = genCpsCmd cs ctx
       --jumpToFirst = "" -- "UncondJump(" ++ show (getLoc ctx + 1) ++ ")"
       in
         reverse $ "Stop" : programBody ++ declCmds -- ++ [jumpToFirst]
   genCode (_, _) = error "Internal error, expected CpsCmd"
 
-  genDecls :: Maybe Decl -> (Context, [String])
-  genDecls Nothing = (Context { loc = 0, decls = M.empty, vars = M.empty }, [])
-  genDecls (Just decl) = genDecl (Context { loc = 0, decls = M.empty, vars = M.empty }, decl)
-
-  genDecl :: (Context, Decl) -> (Context, [String])
-  genDecl (ctx, CpsDecl cs) = genCpsDecl (ctx, cs)
-  genDecl (ctx, FunDecl ident params ret locals body) =
+  genDecls :: Maybe Decl -> Maybe Context -> (Context, [String])
+  genDecls Nothing Nothing = (Context { loc = 0, decls = M.empty, vars = M.empty }, [])
+  genDecls Nothing (Just ctx) = (Context { loc = getLoc ctx, decls = M.empty, vars = M.empty }, [])
+  genDecls (Just decl) _ =
     let
-      addr = getLoc ctx
-      ctx' = insertDecl ctx (ident, addr)
-      retCode = "Return(1)"
-      bodyCode = genCodeCmd body ctx'
-      code = genEndComment "fun" ident : retCode : bodyCode ++ [genBeginComment "fun" ident]
-      ctx'' = incrLoc ctx' (length code - 2)
+      emptyCtx = Context { loc = 0, decls = M.empty, vars = M.empty }
+      (ctx', stoDeclCmds) = genStoDecl (emptyCtx, decl)
+      (ctx'', routineDeclCmds) = genRoutineDecl (Context { loc = 1, decls = M.empty, vars = getVars ctx' }, decl)
+      jump = genUncondJump (getLoc ctx'')
       in
-        (ctx'', code)
+        (ctx'', stoDeclCmds ++ routineDeclCmds ++ [jump])
 
-  genDecl (ctx, StoDecl (ident, t) _) =
+  genStoDecl :: (Context, Decl) -> (Context, [String])
+  genStoDecl (ctx, CpsDecl cs) = genCpsStoDecl (ctx, cs)
+  genStoDecl (ctx, StoDecl (ident, t) _) =
     let
       addr = getVarCount ctx
       ctx' = insertVar ctx (ident, addr)
@@ -50,10 +47,61 @@ module CodeGenerator where
       ctx'' = incrLoc ctx' (length code)
       in
         (ctx'', code)
+  genStoDecl (ctx, _) = (ctx, [])
+
+  genCpsStoDecl :: (Context, [Decl]) -> (Context, [String])
+  genCpsStoDecl (ctx, c : cs) =
+    let
+      (ctx', declCode) = genStoDecl (ctx, c)
+      (ctx'', cpsDeclCode) = genCpsStoDecl (ctx', cs)
+      in
+        (ctx'', cpsDeclCode ++ declCode)
+  genCpsStoDecl (ctx, []) = (ctx, [])
+
+  genCpsRoutineDecl :: (Context, [Decl]) -> (Context, [String])
+  genCpsRoutineDecl (ctx, c : cs) =
+    let
+      (ctx', declCode) = genRoutineDecl (ctx, c)
+      (ctx'', cpsDeclCode) = genCpsRoutineDecl (ctx', cs)
+      in
+        (ctx'', cpsDeclCode ++ declCode)
+  genCpsRoutineDecl (ctx, []) = (ctx, [])
+
+  genRoutineDecl :: (Context, Decl) -> (Context, [String])
+  genRoutineDecl (ctx, CpsDecl cs) = genCpsRoutineDecl (ctx, cs)
+  genRoutineDecl (ctx, FunDecl ident params ret locals body) =
+    let
+      addr = getLoc ctx
+      ctx' = insertDecl ctx (ident, addr)
+      retCode = "Return(1)"
+      bodyCode = genCodeCmd body ctx'
+      code = retCode : bodyCode
+      ctx'' = incrLoc ctx' (length code)
+      in
+        (ctx'', code)
+
+  genRoutineDecl (ctx, ProcDecl ident params locals body) =
+    let
+      addr = getLoc ctx
+      ctx' = insertDecl ctx (ident, addr)
+      bodyCode = genCodeCmd body ctx'
+      ret = "Return(-3)"
+      code = ret : bodyCode
+      ctx'' = incrLoc ctx' (length code)
+      in
+        (ctx'', code)
+
+  genRoutineDecl (ctx, StoDecl _ _) = (ctx, [])
 
   genVarInit :: Type -> String
   genVarInit RatioType = "LoadImRatio(0/1)"
   genVarInit _ = "LoadImInt(0)"
+
+  genUncondJump :: Int -> String
+  genUncondJump addr = "UncondJump(" ++ show addr ++ ")"
+
+  genCall :: Int -> String
+  genCall addr = "Call(" ++ show addr ++ ")"
 
   genBeginComment :: String -> String -> String
   genBeginComment t ident = "-- Begin of " ++ t ++ " " ++ ident ++ " --"
@@ -61,14 +109,14 @@ module CodeGenerator where
   genEndComment :: String -> String -> String
   genEndComment t ident = "-- End of " ++ t ++ " " ++ ident ++ " --"
 
-  genCpsDecl :: (Context, [Decl]) -> (Context, [String])
-  genCpsDecl (ctx, c : cs) =
-    let
-      (ctx', declCode) = genDecl (ctx, c)
-      (ctx'', cpsDeclCode) = genCpsDecl (ctx', cs)
-      in
-        (ctx'', cpsDeclCode ++ declCode)
-  genCpsDecl (ctx, []) = (ctx, [])
+  genCpsCmd :: [Command] -> Context -> [String]
+  genCpsCmd (c : cs) ctx =
+    do
+      let instr = genCodeCmd c ctx
+      let len = length instr
+        in
+          genCpsCmd cs (incrLoc ctx len) ++ instr
+  genCpsCmd [] _ = []
 
   genCodeCmd :: Command -> Context -> [String]
   genCodeCmd (CpsCmd cs) ctx = genCpsCmd cs ctx
@@ -87,6 +135,13 @@ module CodeGenerator where
       store = "Store"
       in
         store : valueCode ++ [loadAddr]
+  genCodeCmd (ProcCallCmd (ident, params)) ctx =
+    let
+      addr = lookupRoutineAddr ctx ident
+      call = genCall addr
+      in
+        [call]
+
   genCodeCmd cmd ctx = error $ "Internal error (cmd = " ++ show cmd ++ ", ctx = " ++ show ctx ++ ")"
 
   genAddrLoad :: Int -> String
@@ -98,17 +153,14 @@ module CodeGenerator where
   lookupVarAddr :: Context -> String -> Int
   lookupVarAddr Context { vars = v } ident = v M.! ident
 
-  getVarCount :: Context -> Int
-  getVarCount Context { vars = v } = length v
+  lookupRoutineAddr :: Context -> String -> Int
+  lookupRoutineAddr Context { decls = d } ident = d M.! ident
 
-  genCpsCmd :: [Command] -> Context -> [String]
-  genCpsCmd (c : cs) ctx =
-    do
-      let instr = genCodeCmd c ctx
-      let len = length instr
-        in
-          genCpsCmd cs (incrLoc ctx len) ++ instr
-  genCpsCmd [] _ = []
+  getVarCount :: Context -> Int
+  getVarCount ctx = length (getVars ctx)
+
+  getVars :: Context -> M.Map String Int
+  getVars Context { vars = v } = v
 
   incrLoc :: Context -> Int -> Context
   incrLoc Context { loc = l, decls = a, vars = v } i = Context { loc = l + i, decls = a, vars = v }

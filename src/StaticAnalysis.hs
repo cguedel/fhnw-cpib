@@ -10,7 +10,19 @@ module StaticAnalysis (analyze) where
   scopeChecker (cmd, decl) = (cmd, decl)
 
   typeChecker :: Program -> Program
-  typeChecker (cmd, decl) = (cmdChecker cmd, decl)
+  typeChecker (cmd, decl) = --(cmdChecker cmd, declChecker decl)
+    let
+      cmd' = cmdChecker cmd
+      decl' = case decl of
+        Nothing -> CpsDecl []
+        Just decls -> declChecker decls
+      in
+        (cmd', Just decl')
+
+  declChecker :: Decl -> Decl
+  declChecker (CpsDecl decls) = CpsDecl (map declChecker decls)
+  declChecker (ProcDecl ident params locals body) = ProcDecl ident params locals (cmdChecker body)
+  declChecker (StoDecl ident changeMode) = StoDecl ident changeMode
 
   cmdChecker :: Command -> Command
   cmdChecker (ProcCallCmd (ident, params)) = ProcCallCmd (ident, params)

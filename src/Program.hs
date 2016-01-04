@@ -29,8 +29,10 @@ parse (fIn : fOut : _) = do
         print analyzed
 
         let code = genCode analyzed
+        let indexed = zip code [0..]
+        let numbered = map (\(c, i) -> "[" ++ show i ++ "]" ++ c) indexed
         putStrLn "-------- Generated instructions --------"
-        mapM_ putStrLn code
+        mapM_ putStrLn numbered
 
         putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
         writeFile fOut $ unlines code

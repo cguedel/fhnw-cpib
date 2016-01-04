@@ -228,7 +228,7 @@ module Parser where
   exprListP =
     do
       tP LPAREN
-      expr <- sepList1C exprP (tP COMMA) id
+      expr <- sepList0C exprP (tP COMMA) id
       tP RPAREN
       return expr
 
