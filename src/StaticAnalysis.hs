@@ -1,9 +1,10 @@
-module StaticAnalysis (analyze, Variable, Context) where
+module StaticAnalysis where
 
   import IML
   import AbstractSyntax
 
   import qualified Data.Map as M
+  import Data.Maybe
 
   -- Types
   type AnalyzedProgram = (Context, TypedCommand, TypedDecl)
@@ -116,6 +117,23 @@ module StaticAnalysis (analyze, Variable, Context) where
       Variable { varType = t } = v M.! ident
       in t
 
+  ctxCheckRoutineIsDefined :: Context -> Ident -> Bool
+  ctxCheckRoutineIsDefined Context { ctxRoutines = r } ident
+    | M.member ident r = True
+    | otherwise = error $ "Undefined function: " ++ ident
+
+  ctxCheckIsProc :: Context -> Ident -> Bool
+  ctxCheckIsProc ctx ident
+    | isNothing retType = True
+    | otherwise = error $ "Undefined procedure: " ++ ident
+    where retType = ctxGetFunReturnType ctx ident
+
+  ctxGetFunReturnType :: Context -> Ident -> Maybe Type
+  ctxGetFunReturnType Context { ctxRoutines = r } ident =
+    let
+      Routine { routType = t } = r M.! ident
+      in t
+
   -- Internal
   analyzeDecls :: Maybe Decl -> (Context, TypedDecl)
   analyzeDecls Nothing = (Context { ctxLoc = 0, ctxRoutines = M.empty, ctxVars = M.empty, ctxIsGlobal = True }, TypedCpsDecl [])
@@ -141,11 +159,12 @@ module StaticAnalysis (analyze, Variable, Context) where
   analyzeDecl (FunDecl ident params returns locals body) ctx =
     let
       ctx' = ctxMakeLocal ctx
+      retType = getFunRetType returns
       (ctx1, returns') = analyzeDecl returns ctx'
       (ctx2, locals') = analyzeCpsDecl (getCpsDecl locals) ctx1
       (ctx3, analyzedParams) = analyzeParams params ctx2
-      ctx4 = ctxAddRoutine ctx (ident, Nothing, analyzedParams, ctx3)
-      body' = analyzeCmd body ctx4
+      ctx4 = ctxAddRoutine ctx (ident, Just retType, analyzedParams, ctx3)
+      body' = analyzeCmd body ctx3
       in
         (ctx4, TypedFunDecl ident analyzedParams returns' (TypedCpsDecl locals') body')
   analyzeDecl (ProcDecl ident params locals body) ctx =
@@ -184,22 +203,28 @@ module StaticAnalysis (analyze, Variable, Context) where
     let
       lExpr = getLExpr expr1 ctx
       rExpr = getRExpr expr2 ctx
+      (lExpr', rExpr') = requireTypeCompatibleExpr lExpr rExpr
       in
-        TypedAssiCmd lExpr rExpr
+        TypedAssiCmd lExpr' rExpr'
   analyzeCmd (CondCmd expr cmd1 cmd2) ctx =
     let
-      rExpr = getRExpr expr ctx
+      rExpr = requireRExprType (getRExpr expr ctx) BoolType
       cmd1' = analyzeCmd cmd1 ctx
       cmd2' = analyzeCmd cmd2 ctx
       in
         TypedCondCmd rExpr cmd1' cmd2'
   analyzeCmd (WhileCmd expr cmd) ctx =
     let
-      rExpr = getRExpr expr ctx
+      rExpr = requireRExprType (getRExpr expr ctx) BoolType
       cmd' = analyzeCmd cmd ctx
       in
         TypedWhileCmd rExpr cmd'
-  analyzeCmd _ _ = error "Internal error: unknown command"
+  analyzeCmd (ProcCallCmd (ident, params)) ctx =
+    let
+      _ = ctxCheckIsProc ctx ident
+      actualRoutineCall = analyzeRoutineCall (ident, params) ctx
+      in
+        TypedProcCallCmd actualRoutineCall
 
   analyzeCpsCmd :: [Command] -> Context -> [TypedCommand]
   analyzeCpsCmd [] _ = []
@@ -223,6 +248,10 @@ module StaticAnalysis (analyze, Variable, Context) where
   analyzeParam ((ident, t), mm, cm) ctx = (ctx, Param { parIdent = ident, parType = t, parMechMode = getMechMode mm, parChangeMode = getChangeMode cm })
 
   -- Expressions
+  genLOrRExpr :: Expr -> Context -> Either LExpr RExpr
+  genLOrRExpr (StoreExpr ident cm) ctx = Left (getLExpr (StoreExpr ident cm) ctx)
+  genLOrRExpr expr ctx = Right (getRExpr expr ctx)
+
   getLExpr :: Expr -> Context -> LExpr
   getLExpr (StoreExpr ident _) ctx =
     let
@@ -252,11 +281,40 @@ module StaticAnalysis (analyze, Variable, Context) where
       t' = getDyadicOpType op t1 t2
       in
         (DyadicRExpr op (expr1', t1) (expr2', t2), t')
+  getRExpr (FunCallExpr (ident, params)) ctx =
+    let
+      _ = ctxCheckRoutineIsDefined ctx ident
+      (ident', params') = analyzeRoutineCall (ident, params) ctx
+      t' = fromMaybe
+        (error "Routine without return type in expression, use call instead")
+        (ctxGetFunReturnType ctx ident)
+      in
+        (FunCallRExpr (ident', params'), t')
 
   getLiteralType :: Value -> Type
   getLiteralType (IntVal _) = IntType
   getLiteralType (BoolVal _) = BoolType
   getLiteralType (RatioVal _) = RatioType
+
+  -- RoutineCalls
+  analyzeRoutineCall :: RoutineCall -> Context -> ActualRoutineCall
+  analyzeRoutineCall (ident, params) ctx =
+    let
+      params' = analyzeRcExprs params ctx
+      in
+        (ident, params')
+
+  analyzeRcExprs :: [Expr] -> Context -> [ActualParameter]
+  analyzeRcExprs [] _ = []
+  analyzeRcExprs (p : ps) ctx =
+    let
+      p' = analyzeRcExpr p ctx
+      ps' = analyzeRcExprs ps ctx
+      in
+        (p' : ps')
+
+  analyzeRcExpr :: Expr -> Context -> ActualParameter
+  analyzeRcExpr expr ctx = (COPY, genLOrRExpr expr ctx)
 
   -- Operators
   getMonadicOpType :: Operator -> Type -> Type
@@ -291,6 +349,18 @@ module StaticAnalysis (analyze, Variable, Context) where
     | otherwise = error $ "Type " ++ show t1 ++ " not assignment compatible with " ++ show t2
 
   -- Misc stuff
+  requireRExprType :: RExpr -> Type -> RExpr
+  requireRExprType (rExpr, t) tReq
+    | t == tReq = (rExpr, t)
+    | otherwise = error $ "Expected expression of type " ++ show tReq ++ ", but got " ++ show t
+
+  requireTypeCompatibleExpr :: LExpr -> RExpr -> (LExpr, RExpr)
+  requireTypeCompatibleExpr (lExpr, lExprT) (rExpr, rExprT) =
+    let
+      lExprT' = getCompatibleType lExprT rExprT
+      in
+        ((lExpr, lExprT'), (rExpr, rExprT))
+
   getChangeMode :: Maybe ChangeMode -> ChangeMode
   getChangeMode Nothing = CONST
   getChangeMode (Just cm) = cm
@@ -303,3 +373,7 @@ module StaticAnalysis (analyze, Variable, Context) where
   getCpsDecl Nothing = []
   getCpsDecl (Just (CpsDecl decl)) = decl
   getCpsDecl _ = error "Internal error: expected CpsDecl"
+
+  getFunRetType :: Decl -> Type
+  getFunRetType (StoDecl (_, t) _) = t
+  getFunRetType _ = error "Internal error: expected StoDecl"

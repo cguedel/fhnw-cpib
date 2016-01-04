@@ -1,15 +1,26 @@
 program SimpleFunc
 global
   const z:ratio;
-  const b:bool;
-  const i:int;
-  proc incrZ (m:bool)
-  local
-    var k:ratio
-  do
-    skip
+  const y:int
+  //const b:bool;
+  //const i:int;
+  //proc incrZ (m:bool)
+  //local
+  //  var k:ratio
+  //do
+  //  skip
     //x := (k + 1) + i + j
-  endproc
+  //endproc;
+
+  //fun getZ () returns zx:ratio
+  //do
+  //  zx := z
+  //endfun;
+
+  //proc procZ ()
+  //do
+  //  skip
+  //endproc
 do
   // debugin z;
   // debugout denum z;
@@ -17,5 +28,8 @@ do
   // debugout -i;
   // debugout +i;
   // debugout (z > i) = b;
-  debugout (z > i) = z
+  // debugout (z > i) = z;
+  // debugout getZ();
+  // call getZ()
+  skip
 endprogram
