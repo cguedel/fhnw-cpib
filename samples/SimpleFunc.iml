@@ -12,7 +12,12 @@ global
   proc decrZ ()
   do
     z := z - 1
-  endproc
+  endproc;
+
+  fun getZ () returns r:ratio
+  do
+    skip
+  endfun
 do
   x := 1/4;
   y := 1;
@@ -21,5 +26,7 @@ do
   call incrZ();
   debugout z;
   call decrZ();
-  debugout z
+  debugout z;
+  call decrZ();
+  debugout getZ()
 endprogram

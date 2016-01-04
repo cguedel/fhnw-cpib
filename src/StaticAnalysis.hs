@@ -22,6 +22,7 @@ module StaticAnalysis (analyze) where
   declChecker :: Decl -> Decl
   declChecker (CpsDecl decls) = CpsDecl (map declChecker decls)
   declChecker (ProcDecl ident params locals body) = ProcDecl ident params locals (cmdChecker body)
+  declChecker (FunDecl ident params ret locals body) = FunDecl ident params ret locals (cmdChecker body)
   declChecker (StoDecl ident changeMode) = StoDecl ident changeMode
 
   cmdChecker :: Command -> Command

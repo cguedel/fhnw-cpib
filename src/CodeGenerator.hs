@@ -5,6 +5,11 @@ module CodeGenerator where
 
   import qualified Data.Map as M
 
+  data Variable = Variable {
+    isGlobal :: Bool,
+    addr :: Int
+  } deriving (Show)
+
   data Context = Context {
     loc :: Int,
     decls :: M.Map String Int,
@@ -73,9 +78,12 @@ module CodeGenerator where
     let
       addr = getLoc ctx
       ctx' = insertDecl ctx (ident, addr)
-      retCode = "Return(1)"
-      bodyCode = genCodeCmd body ctx'
-      code = retCode : bodyCode
+      (ident, t, cm) = getReturnTypeDecl ret
+      localCtx = insertVar ctx' (ident, 0)
+      retAlloc = "Store" : "LoadImInt(0)" : "LoadAddrRel(3)" : ["AllocBlock(1)"]
+      bodyCode = genCodeCmd body localCtx
+      retCode = "Return(-4)"
+      code = retCode : bodyCode ++ retAlloc
       ctx'' = incrLoc ctx' (length code)
       in
         (ctx'', code)
@@ -92,6 +100,10 @@ module CodeGenerator where
         (ctx'', code)
 
   genRoutineDecl (ctx, StoDecl _ _) = (ctx, [])
+
+  getReturnTypeDecl :: Decl -> (String, Type, Maybe ChangeMode)
+  getReturnTypeDecl (StoDecl (ident, t) cm) = (ident, t, cm)
+  getReturnTypeDecl decl = error $ "Internal error: expected StoDecl, but got " ++ show decl
 
   genVarInit :: Type -> String
   genVarInit RatioType = "LoadImRatio(0/1)"
@@ -141,7 +153,7 @@ module CodeGenerator where
       call = genCall addr
       in
         [call]
-
+  genCodeCmd SkipCmd _ = []
   genCodeCmd cmd ctx = error $ "Internal error (cmd = " ++ show cmd ++ ", ctx = " ++ show ctx ++ ")"
 
   genAddrLoad :: Int -> String
@@ -194,7 +206,7 @@ module CodeGenerator where
   genCodeExpr (LiteralExpr val, Just RatioType) _ = ["LoadImRatio(" ++ genLiteral val ++ ")"]
   genCodeExpr (LiteralExpr val, _) _ = ["LoadImInt(" ++ genLiteral val ++ ")"]
 
-  genCodeExpr (FunCallExpr call, _) _ = ["Call(1)"]
+  genCodeExpr (FunCallExpr call, _) _ = ["Call(15)"]
   genCodeExpr (StoreExpr ident _, _) ctx =
     let
       addr = lookupVarAddr ctx ident
