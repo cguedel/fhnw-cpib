@@ -81,7 +81,10 @@ module CodeGenerator (genCode) where
       "Store" : varInit : [varLoad]
 
   allocVariable :: Variable -> [String]
-  allocVariable var = initVariable var ++ ["AllocBlock(1)"]
+  allocVariable var = initVariable var ++ [allocBlock]
+
+  allocBlock :: String
+  allocBlock = "AllocBlock(1)"
 
   -- Declarations
   genDecls :: Maybe Decl -> Maybe Context -> (Context, [String])
@@ -154,14 +157,38 @@ module CodeGenerator (genCode) where
       addr = getLoc ctx
       ctx' = insertRoutine ctx (ident, addr)
       (ctx'', declCmds) = genDecls locals (Just ctx')
-      bodyCode = genCodeCmd body ctx''
+      (ctx''', paramCmds) = genParameters (zip [0..] params) ctx''
+      bodyCode = genCodeCmd body ctx'''
       ret = "Return(-3)"
-      code = ret : bodyCode ++ declCmds
-      ctx''' = incrLoc ctx' (length code)
+      code = ret : bodyCode ++ paramCmds ++declCmds
+      ctx'''' = incrLoc ctx' (length code)
       in
-        (ctx''', code)
+        (ctx'''', code)
 
   genRoutineDecl (ctx, StoDecl _ _) = (ctx, [])
+
+  genParameters :: [(Int, Parameter)] -> Context -> (Context, [String])
+  genParameters [] ctx = (ctx, [])
+  genParameters (p : ps) ctx =
+    let
+      (ctx', cmds) = genParameter p ctx
+      (ctx'', psCmds) = genParameters ps ctx'
+      in
+        (ctx'', cmds ++ psCmds)
+
+  genParameter :: (Int, Parameter) -> Context -> (Context, [String])
+  genParameter (idx, ((ident, t), mechMode, changeMode)) ctx =
+    let
+      ctx' = insertVar ctx (ident, t)
+      variable = getVariableFromCtx ctx' ident
+      alloc = allocBlock
+      loadVar = loadVariableAddr variable
+      loadParam = "LoadAddrRel(" ++ show (-1 - idx) ++ ")"
+      deref = "Deref"
+      store = "Store"
+      code = store : deref : loadParam : loadVar : [alloc]
+      in
+        (ctx', code)
 
   getReturnTypeDecl :: Decl -> (String, Type, Maybe ChangeMode)
   getReturnTypeDecl (StoDecl (ident, t) cm) = (ident, t, cm)
@@ -185,6 +212,7 @@ module CodeGenerator (genCode) where
       cmd = genOutputCmd t
       in
         cmd : exprCode
+
   genCodeCmd (AssiCmd expr1 expr2) ctx =
     let
       ident = getIdent expr1
@@ -194,17 +222,23 @@ module CodeGenerator (genCode) where
       store = "Store"
       in
         store : valueCode ++ [load]
+
   genCodeCmd (ProcCallCmd (ident, params)) ctx =
     let
       addr = lookupRoutineAddr ctx ident
+      paramsToStack = genParamsToStack ctx params
       call = genCall addr
       in
-        [call]
+        call : paramsToStack
   genCodeCmd SkipCmd _ = []
   genCodeCmd cmd ctx = error $ "Internal error (cmd = " ++ show cmd ++ ", ctx = " ++ show ctx ++ ")"
 
-  genAddrLoad :: Int -> String
-  genAddrLoad addr = "LoadImInt(" ++ show addr ++ ")"
+  genParamsToStack :: Context -> [Expr] -> [String]
+  genParamsToStack _ [] = []
+  genParamsToStack ctx (p : ps) = genParamToStack ctx p ++ genParamsToStack ctx ps
+
+  genParamToStack :: Context -> Expr -> [String]
+  genParamToStack ctx p = genCodeExpr p ctx
 
   getIdent :: Expr -> String
   getIdent (StoreExpr ident _, _) = ident

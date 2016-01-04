@@ -1,20 +1,12 @@
 program SimpleFunc
 global
-  var x:ratio;
-  var y:int;
-  var z:ratio;
-
-  proc incrZ ()
-  local
-    var r:int
+  proc incrZ (m:bool)
+  //local
+  //  k:ratio
   do
-    r := 100;
-    z := z + r
+    debugout m
+    //x := (k + 1) + i + j
   endproc
 do
-  z := 1/2;
-  x := 1/2;
-  debugout (x + z);
-  call incrZ();
-  debugout z
+  call incrZ(false)
 endprogram
