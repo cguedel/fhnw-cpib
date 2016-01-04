@@ -37,7 +37,8 @@ public class Program {
 		List<String> instr = new ArrayList<String>();
 
 		while ((strLine = br.readLine()) != null) {
-			instr.add(strLine);
+			if (!strLine.startsWith("--"))
+				instr.add(strLine);
 		}
 
 		br.close();
@@ -161,6 +162,6 @@ public class Program {
 			return new IInstructions.UncondJump(Integer.parseInt(arg));
 		}
 
-		throw new UnsupportedOperationException();
+		throw new UnsupportedOperationException(instrName);
 	}
 }

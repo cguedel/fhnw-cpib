@@ -1,0 +1,9 @@
+program SimpleFunc
+global
+  var x:ratio;
+  var y:int
+do
+  x := 1/4;
+  y := 4;
+  debugout (x + y)
+endprogram

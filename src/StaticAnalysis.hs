@@ -19,6 +19,7 @@ module StaticAnalysis (analyze) where
   cmdChecker (CpsCmd cmds) = CpsCmd (map cmdChecker cmds)
   cmdChecker (SkipCmd) = SkipCmd
   cmdChecker (CondCmd expr cmd1 cmd2) = CondCmd (exprChecker expr) (cmdChecker cmd1) (cmdChecker cmd2)
+  cmdChecker (AssiCmd expr1 expr2) = AssiCmd (exprChecker expr1) (exprChecker expr2)
 
   exprChecker :: Expr -> Expr
   exprChecker (expr, _) = (exprTypeChecker expr, Just $ getExprType expr)
@@ -27,6 +28,8 @@ module StaticAnalysis (analyze) where
   exprTypeChecker (MonadicExpr opr expr) = MonadicExpr opr (exprChecker expr)
   exprTypeChecker (DyadicExpr opr expr1 expr2) = DyadicExpr opr (exprChecker expr1) (exprChecker expr2)
   exprTypeChecker (LiteralExpr val) = LiteralExpr val
+  exprTypeChecker (FunCallExpr call) = FunCallExpr call
+  exprTypeChecker (StoreExpr ident initialize) = StoreExpr ident initialize
 
   getExprType :: ExprType -> Type
   getExprType (LiteralExpr val) = getLitExprType val
@@ -45,6 +48,9 @@ module StaticAnalysis (analyze) where
       compatibleType = getCompatibleType expr1Type expr2Type
       _ = exprChecker (expr1, Nothing)
       _ = exprChecker (expr2, Nothing)
+
+  getExprType (FunCallExpr _) = IntType
+  getExprType (StoreExpr _ _) = RatioType
 
   getLitExprType :: Value -> Type
   getLitExprType (BoolVal _) = BoolType
