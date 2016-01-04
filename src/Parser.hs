@@ -98,7 +98,7 @@ module Parser where
       tP PROC
       ident <- identP
       params <- paramListP
-      locals <- optC cpsStoDeclP
+      locals <- optC localP
       tP DO
       cmd <- cpsCmdP
       tP ENDPROC

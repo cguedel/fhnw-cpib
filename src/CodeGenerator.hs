@@ -1,54 +1,114 @@
-module CodeGenerator where
+module CodeGenerator (genCode) where
 
   import AbstractSyntax
   import IML
 
   import qualified Data.Map as M
 
-  data Variable = Variable {
-    isGlobal :: Bool,
-    addr :: Int
-  } deriving (Show)
-
-  data Context = Context {
-    loc :: Int,
-    decls :: M.Map String Int,
-    vars :: M.Map String Int
-  } deriving (Show)
-
+  -- Exported functions
   genCode :: Program -> [String]
   genCode (CpsCmd cs, decl) =
     let
       (ctx, declCmds) = genDecls decl Nothing
       programBody = genCpsCmd cs ctx
-      --jumpToFirst = "" -- "UncondJump(" ++ show (getLoc ctx + 1) ++ ")"
       in
-        reverse $ "Stop" : programBody ++ declCmds -- ++ [jumpToFirst]
+        reverse $ "Stop" : programBody ++ declCmds
   genCode (_, _) = error "Internal error, expected CpsCmd"
 
-  genDecls :: Maybe Decl -> Maybe Context -> (Context, [String])
-  genDecls Nothing Nothing = (Context { loc = 0, decls = M.empty, vars = M.empty }, [])
-  genDecls Nothing (Just ctx) = (Context { loc = getLoc ctx, decls = M.empty, vars = M.empty }, [])
-  genDecls (Just decl) _ =
+  -- Internal types
+  data Variable = Variable {
+    varIsGlobal :: Bool,
+    varAddr :: Int,
+    varType :: Type
+  } deriving (Show)
+
+  data Context = Context {
+    ctxLoc :: Int,
+    ctxRoutines :: M.Map String Int,
+    ctxVars :: M.Map String Variable,
+    ctxIsGlobal :: Bool
+  } deriving (Show)
+
+  -- Context related functions
+  getVariableFromCtx :: Context -> String -> Variable
+  getVariableFromCtx Context { ctxVars = v } ident = v M.! ident
+
+  makeLocalCtx :: Context -> Context
+  makeLocalCtx Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } =
+    Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = False }
+
+  lookupRoutineAddr :: Context -> String -> Int
+  lookupRoutineAddr Context { ctxRoutines = d } ident = d M.! ident
+
+  getVars :: Context -> M.Map String Variable
+  getVars Context { ctxVars = v } = v
+
+  getVarCount :: [Variable] -> Bool -> Int
+  getVarCount vars isGlobal = length (filter (\Variable { varIsGlobal = g } -> g == isGlobal) vars)
+
+  incrLoc :: Context -> Int -> Context
+  incrLoc Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = g } incr =
+    Context { ctxLoc = l + incr, ctxRoutines = r, ctxVars = v, ctxIsGlobal = g }
+
+  insertRoutine :: Context -> (String, Int) -> Context
+  insertRoutine Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = True } (ident, addr) =
+    Context { ctxLoc = l, ctxRoutines = M.insert ident addr r, ctxVars = v, ctxIsGlobal = True }
+  insertRoutine _ _ = error "Routines can only be declared in the global scope"
+
+  insertVar :: Context -> (String, Type) -> Context
+  insertVar Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = g } (ident, t) =
+    let variable = Variable { varAddr = getVarCount (M.elems v) g, varIsGlobal = g, varType = t }
+    in Context { ctxLoc = l, ctxRoutines = r, ctxVars = M.insert ident variable v, ctxIsGlobal = g }
+
+  getVariableType :: Variable -> Type
+  getVariableType Variable { varType = t } = t
+
+  getLoc :: Context -> Int
+  getLoc Context { ctxLoc = l } = l
+
+  -- Variables
+  loadVariableAddr :: Variable -> String
+  loadVariableAddr Variable { varIsGlobal = True, varAddr = a } = "LoadImInt(" ++ show a ++ ")"
+  loadVariableAddr Variable { varIsGlobal = False, varAddr = a } = "LoadAddrRel(" ++ show (a + 3) ++ ")"
+
+  initVariable :: Variable -> [String]
+  initVariable var =
     let
-      emptyCtx = Context { loc = 0, decls = M.empty, vars = M.empty }
+      varT = getVariableType var
+      varLoad = loadVariableAddr var
+      varInit = genVarInit varT
+    in
+      "Store" : varInit : [varLoad]
+
+  allocVariable :: Variable -> [String]
+  allocVariable var = initVariable var ++ ["AllocBlock(1)"]
+
+  -- Declarations
+  genDecls :: Maybe Decl -> Maybe Context -> (Context, [String])
+  genDecls Nothing Nothing = (Context { ctxLoc = 1, ctxRoutines = M.empty, ctxVars = M.empty, ctxIsGlobal = True }, [])
+  genDecls (Just decl) Nothing =
+    let
+      (emptyCtx, _) = genDecls Nothing Nothing
       (ctx', stoDeclCmds) = genStoDecl (emptyCtx, decl)
-      (ctx'', routineDeclCmds) = genRoutineDecl (Context { loc = 1, decls = M.empty, vars = getVars ctx' }, decl)
+      (ctx'', routineDeclCmds) = genRoutineDecl (Context { ctxLoc = 1, ctxRoutines = M.empty, ctxVars = getVars ctx', ctxIsGlobal = True }, decl)
       jump = genUncondJump (getLoc ctx'')
       in
         (ctx'', stoDeclCmds ++ routineDeclCmds ++ [jump])
+  genDecls Nothing (Just ctx) = (makeLocalCtx ctx, [])
+  genDecls (Just decl) (Just ctx) =
+    let
+      localCtx = makeLocalCtx ctx
+      (ctx', stoDeclCmds) = genStoDecl (localCtx, decl)
+      in
+        (ctx', stoDeclCmds)
 
   genStoDecl :: (Context, Decl) -> (Context, [String])
   genStoDecl (ctx, CpsDecl cs) = genCpsStoDecl (ctx, cs)
   genStoDecl (ctx, StoDecl (ident, t) _) =
     let
-      addr = getVarCount ctx
-      ctx' = insertVar ctx (ident, addr)
-      alloc = "AllocBlock(1)"
-      addrLoad = genAddrLoad addr
-      valLoad = genVarInit t
-      store = "Store"
-      code = store : valLoad : addrLoad : [alloc]
+      ctx' = insertVar ctx (ident, t)
+      variable = getVariableFromCtx ctx' ident
+      code = allocVariable variable
       ctx'' = incrLoc ctx' (length code)
       in
         (ctx'', code)
@@ -77,27 +137,29 @@ module CodeGenerator where
   genRoutineDecl (ctx, FunDecl ident params ret locals body) =
     let
       addr = getLoc ctx
-      ctx' = insertDecl ctx (ident, addr)
+      ctx' = insertRoutine ctx (ident, addr)
+      (ctx'', declCmds) = genDecls locals (Just ctx')
       (ident, t, cm) = getReturnTypeDecl ret
-      localCtx = insertVar ctx' (ident, 0)
+      localCtx = insertVar ctx'' (ident, t)
       retAlloc = "Store" : "LoadImInt(0)" : "LoadAddrRel(3)" : ["AllocBlock(1)"]
       bodyCode = genCodeCmd body localCtx
       retCode = "Return(-4)"
       code = retCode : bodyCode ++ retAlloc
-      ctx'' = incrLoc ctx' (length code)
+      ctx''' = incrLoc ctx' (length code)
       in
         (ctx'', code)
 
   genRoutineDecl (ctx, ProcDecl ident params locals body) =
     let
       addr = getLoc ctx
-      ctx' = insertDecl ctx (ident, addr)
-      bodyCode = genCodeCmd body ctx'
+      ctx' = insertRoutine ctx (ident, addr)
+      (ctx'', declCmds) = genDecls locals (Just ctx')
+      bodyCode = genCodeCmd body ctx''
       ret = "Return(-3)"
-      code = ret : bodyCode
-      ctx'' = incrLoc ctx' (length code)
+      code = ret : bodyCode ++ declCmds
+      ctx''' = incrLoc ctx' (length code)
       in
-        (ctx'', code)
+        (ctx''', code)
 
   genRoutineDecl (ctx, StoDecl _ _) = (ctx, [])
 
@@ -105,22 +167,7 @@ module CodeGenerator where
   getReturnTypeDecl (StoDecl (ident, t) cm) = (ident, t, cm)
   getReturnTypeDecl decl = error $ "Internal error: expected StoDecl, but got " ++ show decl
 
-  genVarInit :: Type -> String
-  genVarInit RatioType = "LoadImRatio(0/1)"
-  genVarInit _ = "LoadImInt(0)"
-
-  genUncondJump :: Int -> String
-  genUncondJump addr = "UncondJump(" ++ show addr ++ ")"
-
-  genCall :: Int -> String
-  genCall addr = "Call(" ++ show addr ++ ")"
-
-  genBeginComment :: String -> String -> String
-  genBeginComment t ident = "-- Begin of " ++ t ++ " " ++ ident ++ " --"
-
-  genEndComment :: String -> String -> String
-  genEndComment t ident = "-- End of " ++ t ++ " " ++ ident ++ " --"
-
+  -- Commands
   genCpsCmd :: [Command] -> Context -> [String]
   genCpsCmd (c : cs) ctx =
     do
@@ -141,12 +188,12 @@ module CodeGenerator where
   genCodeCmd (AssiCmd expr1 expr2) ctx =
     let
       ident = getIdent expr1
-      addr = lookupVarAddr ctx ident
-      loadAddr = genAddrLoad addr
+      variable = getVariableFromCtx ctx ident
+      load = loadVariableAddr variable
       valueCode = genCodeExpr expr2 ctx
       store = "Store"
       in
-        store : valueCode ++ [loadAddr]
+        store : valueCode ++ [load]
   genCodeCmd (ProcCallCmd (ident, params)) ctx =
     let
       addr = lookupRoutineAddr ctx ident
@@ -162,35 +209,12 @@ module CodeGenerator where
   getIdent :: Expr -> String
   getIdent (StoreExpr ident _, _) = ident
 
-  lookupVarAddr :: Context -> String -> Int
-  lookupVarAddr Context { vars = v } ident = v M.! ident
-
-  lookupRoutineAddr :: Context -> String -> Int
-  lookupRoutineAddr Context { decls = d } ident = d M.! ident
-
-  getVarCount :: Context -> Int
-  getVarCount ctx = length (getVars ctx)
-
-  getVars :: Context -> M.Map String Int
-  getVars Context { vars = v } = v
-
-  incrLoc :: Context -> Int -> Context
-  incrLoc Context { loc = l, decls = a, vars = v } i = Context { loc = l + i, decls = a, vars = v }
-
-  insertDecl :: Context -> (String, Int) -> Context
-  insertDecl Context { loc = l, decls = m, vars = v } (ident, addr) = Context { loc = l, decls = M.insert ident addr m, vars = v }
-
-  insertVar :: Context -> (String, Int) -> Context
-  insertVar Context { loc = l, decls = m, vars = v } (ident, addr) = Context { loc = l, decls = m, vars = M.insert ident addr v }
-
-  getLoc :: Context -> Int
-  getLoc Context {loc = l} = l
-
   genOutputCmd :: Type -> String
   genOutputCmd IntType = "OutputInt"
   genOutputCmd BoolType = "OutputBool"
   genOutputCmd RatioType = "OutputRatio"
 
+  -- Expressions
   genCodeExpr :: Expr -> Context -> [String]
   genCodeExpr (MonadicExpr opr expr, Just IntType) ctx
     | opr `elem` [Denom,Num,Floor,Ceil,Round] = genRatioOprCode opr : exprCode ctx
@@ -209,11 +233,10 @@ module CodeGenerator where
   genCodeExpr (FunCallExpr call, _) _ = ["Call(15)"]
   genCodeExpr (StoreExpr ident _, _) ctx =
     let
-      addr = lookupVarAddr ctx ident
-      loadAddr = genAddrLoad addr
+      variable = getVariableFromCtx ctx ident
+      load = loadVariableAddr variable
       deref = "Deref"
-      code = deref : [loadAddr]
-      ctx' = incrLoc ctx (length code)
+      code = deref : [load]
       in
         code
 
@@ -265,3 +288,14 @@ module CodeGenerator where
   genLiteral (IntVal i) = show i
   genLiteral (BoolVal b) = if b then "1" else "0"
   genLiteral (RatioVal (denom, num)) = show denom ++ "/" ++ show num
+
+  -- Others
+  genVarInit :: Type -> String
+  genVarInit RatioType = "LoadImRatio(0/1)"
+  genVarInit _ = "LoadImInt(0)"
+
+  genUncondJump :: Int -> String
+  genUncondJump addr = "UncondJump(" ++ show addr ++ ")"
+
+  genCall :: Int -> String
+  genCall addr = "Call(" ++ show addr ++ ")"

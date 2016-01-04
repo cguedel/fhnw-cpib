@@ -5,28 +5,16 @@ global
   var z:ratio;
 
   proc incrZ ()
+  local
+    var r:int
   do
-    z := z + 1
-  endproc;
-
-  proc decrZ ()
-  do
-    z := z - 1
-  endproc;
-
-  fun getZ () returns r:ratio
-  do
-    skip
-  endfun
+    r := 100;
+    z := z + r
+  endproc
 do
-  x := 1/4;
-  y := 1;
-  z := (x + y);
-  debugout z;
+  z := 1/2;
+  x := 1/2;
+  debugout (x + z);
   call incrZ();
-  debugout z;
-  call decrZ();
-  debugout z;
-  call decrZ();
-  debugout getZ()
+  debugout z
 endprogram
