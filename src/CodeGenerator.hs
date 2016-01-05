@@ -112,7 +112,7 @@ module CodeGenerator (genCode) where
       (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
       (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
       numLocalVars = ctxGetRoutineVarCount ctx ident - length params
-      routInstr = Return numLocalVars : bodyInstr ++ localsInstr ++ paramsInstr ++ returnInstr
+      routInstr = Return 0 : Store: Deref : LoadAddrRel 3 : LoadAddrRel (length params * (-1) - 1) : bodyInstr ++ localsInstr ++ paramsInstr ++ returnInstr
       routLength = length routInstr
       jump = UncondJump (addr + routLength)
       allInstr = routInstr

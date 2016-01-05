@@ -56,5 +56,6 @@ do
   //debugout y divE z
   z := 34;
   debugout z;
-  debugout getZ()
+  debugout getZ();
+  debugout z
 endprogram
