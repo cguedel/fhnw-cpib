@@ -1,7 +1,7 @@
 program SimpleFunc
 global
-  const z:ratio;
-  const y:int
+  //const z:ratio;
+  //const y:int;
   //const b:bool;
   //const i:int;
   //proc incrZ (m:bool)
@@ -17,10 +17,15 @@ global
   //  zx := z
   //endfun;
 
-  //proc procZ ()
+  proc procZ ()
+  do
+    skip
+  endproc
+
+  //;proc next()
   //do
-  //  skip
-  //endproc
+//    skip
+//  endproc
 do
   // debugin z;
   // debugout denum z;

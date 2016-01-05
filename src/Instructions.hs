@@ -48,7 +48,7 @@ module Instructions where
     | Store
     | SubInt
     | SubRatio
-    | UncondJump
+    | UncondJump Int
 
   instance Show Instr where
     show AddInt = "AddInt"
@@ -98,4 +98,4 @@ module Instructions where
     show Store = "Store"
     show SubInt = "SubInt"
     show SubRatio = "SubRatio"
-    show UncondJump = "UncondJump"
+    show (UncondJump i) = "UncondJump(" ++ show i ++ ")"

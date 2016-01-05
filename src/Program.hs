@@ -28,11 +28,14 @@ parse (fIn : fOut : _) = do
         putStrLn "-------- Type checked abstract syntax tree --------"
         print analyzed
 
-        let code = genCode analyzed
+        let (ctx, code) = genCode analyzed
         let indexed = zip code [0..]
         let numbered = map (\(c, i) -> "[" ++ show i ++ "] " ++ show c) indexed
         putStrLn "-------- Generated instructions --------"
         mapM_ putStrLn numbered
+
+        putStrLn "-------- Context --------"
+        print ctx
 
         --putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
         --writeFile fOut $ unlines code
