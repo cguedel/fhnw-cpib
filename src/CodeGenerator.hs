@@ -19,8 +19,11 @@ module CodeGenerator (genCode) where
 
   -- Context
   ctxIncrLoc :: Context -> [Instr] -> Context
-  ctxIncrLoc Context { ctxLoc = l, ctxVars = v, ctxRoutines = r } instr =
-    Context { ctxLoc = l + length instr, ctxVars = v, ctxRoutines = r }
+  ctxIncrLoc ctx instr = ctxIncrLocBy ctx (length instr)
+
+  ctxIncrLocBy :: Context -> Int -> Context
+  ctxIncrLocBy Context { ctxLoc = l, ctxVars = v, ctxRoutines = r } i =
+    Context { ctxLoc = l + i, ctxVars = v, ctxRoutines = r }
 
   ctxGetLoc :: Context -> Int
   ctxGetLoc Context { ctxLoc = l } = l
@@ -139,12 +142,13 @@ module CodeGenerator (genCode) where
         (ctx'', ident'', is ++ i)
 
   genCmd :: (Context, Maybe Ident) -> TypedCommand -> (Context, Maybe Ident, [Instr])
+  genCmd (ctx, ident) (TypedCpsCmd cs) = genCpsCmd (ctx, ident) cs
   genCmd (ctx, ident) TypedSkipCmd = (ctx, ident, [])
   genCmd (ctx, ident) (TypedDebugInCmd lExpr) =
     let
       (_, t) = lExpr
       exprInstr = genLExpr (ctx, ident) lExpr
-      code = genDebugInCmd t : exprInstr
+      code = genDebugInCmd "" t : exprInstr
       ctx' = ctxIncrLoc ctx code
       in
         (ctx', ident, code)
@@ -152,7 +156,7 @@ module CodeGenerator (genCode) where
     let
       (_, t) = rExpr
       exprInstr = genRExpr (ctx, ident) rExpr
-      code = genDebugOutCmd t : exprInstr
+      code = genDebugOutCmd "" t : exprInstr
       ctx' = ctxIncrLoc ctx code
       in
         (ctx', ident, code)
@@ -164,16 +168,29 @@ module CodeGenerator (genCode) where
       ctx' = ctxIncrLoc ctx code
       in
         (ctx', ident, code)
+  genCmd (ctx, ident) (TypedCondCmd cond cmd1 cmd2) =
+    let
+      condExprInstr = genRExpr (ctx, ident) cond
+      ctx' = ctxIncrLocBy ctx (length condExprInstr + 1)
+      (_, _, cmd1Instr) = genCmd (ctx', ident) cmd1
+      ctx'' = ctxIncrLocBy ctx' (length cmd1Instr + 1)
+      elseAddr = ctxGetLoc ctx''
+      (_, _, cmd2Instr) = genCmd (ctx'', ident) cmd2
+      endAddr = ctxGetLoc ctx'' + length cmd2Instr
+      code = cmd2Instr ++ [UncondJump endAddr] ++ cmd1Instr ++ [CondJump elseAddr] ++ condExprInstr
+      finalCtx = ctxIncrLoc ctx code
+      in
+        (finalCtx, ident, code)
 
-  genDebugInCmd :: Type -> Instr
-  genDebugInCmd BoolType = InputBool ""
-  genDebugInCmd IntType = InputInt ""
-  genDebugInCmd RatioType = InputRatio ""
+  genDebugInCmd :: String -> Type -> Instr
+  genDebugInCmd s BoolType = InputBool s
+  genDebugInCmd s IntType = InputInt s
+  genDebugInCmd s RatioType = InputRatio s
 
-  genDebugOutCmd :: Type -> Instr
-  genDebugOutCmd BoolType = OutputBool ""
-  genDebugOutCmd IntType = OutputInt ""
-  genDebugOutCmd RatioType = OutputRatio ""
+  genDebugOutCmd :: String -> Type -> Instr
+  genDebugOutCmd s BoolType = OutputBool s
+  genDebugOutCmd s IntType = OutputInt s
+  genDebugOutCmd s RatioType = OutputRatio s
 
   -- Expressions
   genLExpr :: (Context, Maybe Ident) -> LExpr -> [Instr]

@@ -41,11 +41,27 @@ do
   // debugout (z > i) = z;
   // debugout getZ();
   // call getZ()
-  debugin y;
-  debugin z;
-  debugout (y + z) > (y - z)
+  //debugin y;
+  //debugin z;
+  //debugout (y + z) > (y - z);
+  //debugout 1 - 1 - 1
   //debugout y > z
   //debugout y - z;
   //debugout y * z;
   //debugout y divE z
+  if false then
+    if 1 < 2 then
+      z := 1/4
+    else
+      z := 1/2
+    endif
+  else
+    if 2 < 1 then
+      z := 1/8
+    else
+      z := 1/16
+    endif
+  endif;
+
+  debugout z
 endprogram
