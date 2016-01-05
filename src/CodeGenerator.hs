@@ -89,18 +89,19 @@ module CodeGenerator (genCode) where
         (ctx', Nothing, instr)
   genDecl (ctx, Nothing) (TypedProcDecl ident params (TypedCpsDecl locals) (TypedCpsCmd body)) =
     let
-      addr = ctxGetLoc ctx
-      ctx' = ctxSetRoutineAddr ctx ident (addr + 1)
-      (routCtx, paramsInstr) = genParams (ctx', ident) params
+      ctx' = ctxIncrLocBy ctx 1
+      addr = ctxGetLoc ctx'
+      ctx'' = ctxSetRoutineAddr ctx' ident addr
+      (routCtx, paramsInstr) = genParams (ctx'', ident) params
       (routCtx', _, localsInstr) = genCpsDecl (routCtx, Just ident) locals
       (_, _, bodyInstr) = genCpsCmd (routCtx', Just ident) body
-      routInstr = bodyInstr ++ localsInstr ++ paramsInstr
+      routInstr = Return 3 : bodyInstr ++ localsInstr ++ paramsInstr
       routLength = length routInstr
-      jump = UncondJump (addr + 1 + routLength)
-      allInstr = routInstr ++ [jump]
-      finalCtx = ctxIncrLoc ctx' allInstr
+      jump = UncondJump (addr + routLength)
+      allInstr = routInstr
+      finalCtx = ctxIncrLoc ctx'' allInstr
       in
-        (finalCtx, Nothing, allInstr)
+        (finalCtx, Nothing, allInstr ++ [jump])
 
   genLocalVarDecl :: Variable -> [Instr]
   genLocalVarDecl Variable { varType = t, varAddr = a } = [Store, genTypeInit t, LoadAddrRel (a + 3), AllocBlock 1]
@@ -178,6 +179,17 @@ module CodeGenerator (genCode) where
       (_, _, cmd2Instr) = genCmd (ctx'', ident) cmd2
       endAddr = ctxGetLoc ctx'' + length cmd2Instr
       code = cmd2Instr ++ [UncondJump endAddr] ++ cmd1Instr ++ [CondJump elseAddr] ++ condExprInstr
+      finalCtx = ctxIncrLoc ctx code
+      in
+        (finalCtx, ident, code)
+  genCmd (ctx, ident) (TypedWhileCmd cond body) =
+    let
+      condAddr = ctxGetLoc ctx
+      condExprInstr = genRExpr (ctx, ident) cond
+      ctx' = ctxIncrLocBy ctx (length condExprInstr + 1)
+      (_, _, bodyInstr) = genCmd (ctx', ident) body
+      endAddr = ctxGetLoc ctx' + length bodyInstr + 1
+      code = [UncondJump condAddr] ++ bodyInstr ++ [CondJump endAddr] ++ condExprInstr
       finalCtx = ctxIncrLoc ctx code
       in
         (finalCtx, ident, code)

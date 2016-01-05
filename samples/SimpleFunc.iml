@@ -1,7 +1,7 @@
 program SimpleFunc
 global
-  const y:ratio;
-  const z:ratio;
+  //const y:ratio;
+  var z:ratio;
   //const y:int;
   //const b:bool;
   //const i:int;
@@ -20,11 +20,21 @@ global
 //    skip //zx := z
   //endfun
 //;
-  proc procZ (i:int)
-  local
-    var x:ratio
+  proc procZ ()
   do
-    skip
+  if true then
+    if true then
+      debugout true
+    else
+      debugout false
+    endif
+  else
+    if true then
+      debugout true
+    else
+      debugout false
+    endif
+  endif
   endproc
 
   //;proc next()
@@ -49,19 +59,9 @@ do
   //debugout y - z;
   //debugout y * z;
   //debugout y divE z
-  if false then
-    if 1 < 2 then
-      z := 1/4
-    else
-      z := 1/2
-    endif
-  else
-    if 2 < 1 then
-      z := 1/8
-    else
-      z := 1/16
-    endif
-  endif;
-
+  while z < 100
+  do
+    z := z + 1
+  endwhile;
   debugout z
 endprogram
