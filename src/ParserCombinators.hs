@@ -18,8 +18,9 @@ module ParserCombinators where
   instance Monad (Parser t) where
     return v = P (\inp -> [(v, inp)])
     p >>= f = P (\inp -> case parse p inp of
-                  [] -> []
-                  [(v, out)] -> parse (f v) out)
+                          [] -> []
+                          [(v, out)] -> parse (f v) out
+                          (_, _) : (_ : _) -> error "Internal error")
 
   failureP :: Parser t a
   failureP = P (const [])
@@ -32,7 +33,8 @@ module ParserCombinators where
   (+++) :: Parser t a -> Parser t a -> Parser t a
   p +++ q = P (\inp -> case parse p inp of
                          [] -> parse q inp
-                         [(v, out)] -> [(v, out)])
+                         [(v, out)] -> [(v, out)]
+                         (_, _) : (_ : _) -> error "Internal error")
 
   rep0C :: Parser t a -> Parser t [a]
   rep0C p = rep1C p +++ return []
@@ -44,7 +46,7 @@ module ParserCombinators where
   sepList1C elemP sepP f =
     do
       e  <- elemP
-      es <- rep0C (do _ <- sepP; e <- elemP; return e)
+      es <- rep0C (do _ <- sepP; elemP)
       return (f (e : es))
 
   sepList0C :: Parser t a -> Parser t b -> ([a] -> c) -> Parser t c

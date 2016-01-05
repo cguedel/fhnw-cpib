@@ -321,4 +321,9 @@ module CodeGenerator (genCode) where
   genOp _ Minus = SubInt
   genOp _ Times = MultInt
   genOp _ Div = DivTruncInt
-  genOp _ _ = undefined
+  genOp BoolType CAnd = MultInt
+  genOp BoolType Cor = AddInt
+  genOp BoolType Not = NegBool
+  genOp RatioType op = error $ "Illegal operator for RatioType: " ++ show op
+  genOp IntType op = error $ "Illegal operator for IntType: " ++ show op
+  genOp BoolType op = error $ "Illegal operator for BoolType: " ++ show op

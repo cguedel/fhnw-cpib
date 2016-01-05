@@ -10,8 +10,8 @@ module Parser where
   tokenP term = P (\inp ->
     case parse itemP inp of
       [] -> []
-      [((term', attrib, pos), out)] ->
-        [((term', attrib, pos), out) | term' == term])
+      [((term', attrib, pos), out)] -> [((term', attrib, pos), out) | term' == term]
+      ((_, _, _), _) : (_ : _) -> error "Internal error")
 
   tP :: Terminal -> ParserT ()
   tP term =

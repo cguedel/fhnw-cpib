@@ -2,12 +2,16 @@ import Scanner
 import Parser
 import StaticAnalysis
 import CodeGenerator
+import Instructions
 
 import System.Environment
 import System.Directory
 
 main :: IO()
 main = getArgs >>= parse
+
+zipCode ::  [Int] -> [Instr] -> [(Int, Instr)]
+zipCode = zip
 
 parse :: [String] -> IO ()
 parse (fIn : fOut : _) = do
@@ -29,7 +33,7 @@ parse (fIn : fOut : _) = do
         print analyzed
 
         let (ctx, code) = genCode analyzed
-        let indexed = zip code [0..]
+        let indexed = zipCode [0..] code
         let numbered = map (\(c, i) -> "[" ++ show i ++ "] " ++ show c) indexed
         putStrLn "-------- Generated instructions --------"
         mapM_ putStrLn numbered

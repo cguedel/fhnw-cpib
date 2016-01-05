@@ -104,7 +104,7 @@ public class Data
     // coding booleans as integers
     static boolean boolGet(IBaseData a)
     {
-        return ((IntData)a).getData() == 1;
+        return ((IntData)a).getData() != 0;
     }
 
     static class FloatData implements IBaseData
