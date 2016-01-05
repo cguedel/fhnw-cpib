@@ -37,8 +37,8 @@ parse (fIn : fOut : _) = do
         putStrLn "-------- Context --------"
         print ctx
 
-        --putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
-        --writeFile fOut $ unlines code
+        putStrLn ("-------- Writing generated code to file " ++ fOut ++ "--------")
+        writeFile fOut $ unlines $ map show code
   else
     error "File does not exist"
 parse _ = error "Invalid cmdline arguments, usage: iml.exe <file> <output>"

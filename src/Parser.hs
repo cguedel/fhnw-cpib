@@ -86,7 +86,7 @@ module Parser where
       params <- paramListP
       tP RETURNS
       ret <- stoDeclP
-      locals <- optC cpsStoDeclP
+      locals <- optC localP
       tP DO
       cmd <- cpsCmdP
       tP ENDFUN

@@ -1,6 +1,6 @@
 program SimpleFunc
 global
-  //const z:ratio;
+  const y:ratio;
   //const y:int;
   //const b:bool;
   //const i:int;
@@ -13,11 +13,15 @@ global
   //endproc;
 
   //fun getZ () returns zx:ratio
+//  local
+//    var g:bool
   //do
-  //  zx := z
-  //endfun;
-
-  proc procZ ()
+//    skip //zx := z
+  //endfun
+//;
+  proc procZ (i:int)
+  local
+    var x:ratio
   do
     skip
   endproc
@@ -36,5 +40,6 @@ do
   // debugout (z > i) = z;
   // debugout getZ();
   // call getZ()
-  skip
+  debugin y;
+  debugout y
 endprogram

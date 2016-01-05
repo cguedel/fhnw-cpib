@@ -10,7 +10,6 @@ module StaticAnalysis where
   type AnalyzedProgram = (Context, TypedCommand, TypedDecl)
 
   data Variable = Variable {
-    varIsGlobal :: Bool,
     varAddr :: Int,
     varType :: Type,
     varChangeMode :: ChangeMode
@@ -27,14 +26,13 @@ module StaticAnalysis where
     routAddr :: Int,
     routType :: Maybe Type,
     routParams :: [Param],
-    routCtx :: Context
+    routVars :: M.Map String Variable
   } deriving (Show)
 
   data Context = Context {
     ctxLoc :: Int,
     ctxRoutines :: M.Map String Routine,
-    ctxVars :: M.Map String Variable,
-    ctxIsGlobal :: Bool
+    ctxVars :: M.Map String Variable
   } deriving (Show)
 
   data TypedDecl
@@ -78,44 +76,80 @@ module StaticAnalysis where
   analyze (CpsCmd cs, decls) =
     let
       (globalCtx, decls') = analyzeDecls decls
-      cmd = analyzeCpsCmd cs globalCtx
+      cmd = analyzeCpsCmd cs (globalCtx, Nothing)
       in
         (globalCtx, TypedCpsCmd cmd, decls')
   analyze (_, _) = error "Internal error: Expected CpsCmd"
 
   -- Context related stuff
-  ctxMakeLocal :: Context -> Context
-  ctxMakeLocal Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = _ } =
-    Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = False }
-
   ctxAddVariable :: Context -> (String, Type, ChangeMode) -> Context
-  ctxAddVariable Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = g } (ident, t, cm) =
+  ctxAddVariable Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } (ident, t, cm) =
     let
-      variable = Variable { varAddr = ctxGetScopeVarCount (M.elems v) g, varIsGlobal = g, varType = t, varChangeMode = cm }
+      variable = Variable { varAddr = length v, varType = t, varChangeMode = cm }
       in
-        Context { ctxLoc = l, ctxRoutines = r, ctxVars = M.insert ident variable v, ctxIsGlobal = g }
+        Context { ctxLoc = l, ctxRoutines = r, ctxVars = M.insert ident variable v }
 
-  ctxAddRoutine :: Context -> (String, Maybe Type, [Param], Context) -> Context
-  ctxAddRoutine Context { ctxLoc = l, ctxRoutines = r, ctxVars = v, ctxIsGlobal = True } (ident, t, ps, ctx) =
+  ctxAddRoutineVariable :: Context -> Ident -> (String, Type, ChangeMode) -> Context
+  ctxAddRoutineVariable Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } rout (ident, t, cm) =
     let
-      routine = Routine { routAddr = 0, routType = t, routCtx = ctx, routParams = ps }
+      Routine { routAddr = a, routType = rt, routParams = p, routVars = rv } = r M.! rout
+      variable = Variable { varAddr = length rv, varType = t, varChangeMode = cm }
+      routine' = Routine { routAddr = a, routType = rt, routParams = p, routVars = M.insert ident variable rv }
       in
-        Context { ctxLoc = l, ctxRoutines = M.insert ident routine r, ctxVars = v, ctxIsGlobal = True }
-  ctxAddRoutine _ _ = error "Internal error: Routines can only be added to a global context"
+        Context { ctxLoc = l, ctxRoutines = M.insert rout routine' r, ctxVars = v }
 
-  ctxGetScopeVarCount :: [Variable] -> Bool -> Int
-  ctxGetScopeVarCount vars isGlobal = length (filter (\Variable { varIsGlobal = g } -> g == isGlobal) vars)
+  ctxAddRoutine :: Context -> (String, Maybe Type) -> Context
+  ctxAddRoutine Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } (ident, t) =
+    let
+      routine = Routine { routAddr = 0, routType = t, routVars = M.empty, routParams = [] }
+      in
+        Context { ctxLoc = l, ctxRoutines = M.insert ident routine r, ctxVars = v }
+
+  ctxGetRoutine :: Context -> Ident -> Routine
+  ctxGetRoutine Context { ctxRoutines = r } ident
+    | M.member ident r = r M.! ident
+    | otherwise = error $ "Undefined routine: " ++ ident
+
+  ctxSetRoutine :: Context -> Ident -> Routine -> Context
+  ctxSetRoutine Context { ctxLoc = l, ctxVars = v, ctxRoutines = r } ident routine =
+    Context { ctxLoc = l, ctxVars = v, ctxRoutines = M.insert ident routine r }
+
+  ctxSetRoutineParams :: Context -> Ident -> [Param] -> Context
+  ctxSetRoutineParams ctx ident params =
+    let
+      Routine { routVars = v, routType = t, routAddr = a } = ctxGetRoutine ctx ident
+      in
+        ctxSetRoutine ctx ident Routine { routVars = v, routType = t, routAddr = a, routParams = params }
 
   ctxCheckVarIsDefined :: Context -> Ident -> Bool
   ctxCheckVarIsDefined Context { ctxVars = v } ident
     | M.member ident v = True
     | otherwise = error $ "Undefined variable: " ++ ident
 
-  ctxGetVariableType :: Context -> Ident -> Type
-  ctxGetVariableType Context { ctxVars = v } ident =
+  ctxGetVariableType :: (Context, Maybe Ident) -> Ident -> Type
+  ctxGetVariableType (Context { ctxVars = v, ctxRoutines = r }, routine) ident =
     let
-      Variable { varType = t } = v M.! ident
-      in t
+      isLocalVar = case routine of
+        Nothing -> False
+        Just rout -> M.member rout r
+      in
+        if isLocalVar then
+          let
+            Routine { routVars = rv } = (r M.! fromMaybe "" routine)
+            in
+              if M.member ident rv then
+                let Variable { varType = t } = rv M.! ident
+                  in t
+              else
+                error $ "Undefined local variable: " ++ ident
+        else
+          if M.member ident v then
+            let
+              Variable { varType = t } = v M.! ident
+              in
+                t
+          else
+            error $ "Undefined global variable: " ++ ident
 
   ctxCheckRoutineIsDefined :: Context -> Ident -> Bool
   ctxCheckRoutineIsDefined Context { ctxRoutines = r } ident
@@ -136,57 +170,63 @@ module StaticAnalysis where
 
   -- Internal
   analyzeDecls :: Maybe Decl -> (Context, TypedDecl)
-  analyzeDecls Nothing = (Context { ctxLoc = 0, ctxRoutines = M.empty, ctxVars = M.empty, ctxIsGlobal = True }, TypedCpsDecl [])
+  analyzeDecls Nothing = (Context { ctxLoc = 0, ctxRoutines = M.empty, ctxVars = M.empty }, TypedCpsDecl [])
   analyzeDecls (Just (CpsDecl ds)) =
     let
       (emptyCtx, _) = analyzeDecls Nothing
-      (ctx, decls') = analyzeCpsDecl ds emptyCtx
+      (ctx, _, decls') = analyzeCpsDecl ds (emptyCtx, Nothing)
       in
         (ctx, TypedCpsDecl decls')
   analyzeDecls (Just _) = error "Internal error: Expected CpsDecl"
 
-  analyzeDecl :: Decl -> Context -> (Context, TypedDecl)
-  analyzeDecl (CpsDecl cs) ctx =
+  analyzeDecl :: Decl -> (Context, Maybe Ident) -> (Context, Maybe Ident, TypedDecl)
+  analyzeDecl (CpsDecl ds) (ctx, routine) =
     let
-      (ctx', cs') = analyzeCpsDecl cs ctx
+      (ctx', routine', ds') = analyzeCpsDecl ds (ctx, routine)
       in
-        (ctx', TypedCpsDecl cs')
-  analyzeDecl (StoDecl (ident, t) cm) ctx =
+        (ctx', routine', TypedCpsDecl ds')
+
+  analyzeDecl (StoDecl (ident, t) cm) (ctx, routine) =
     let
-      ctx' = ctxAddVariable ctx (ident, t, getChangeMode cm)
+      ctx' =
+        case routine of
+          Nothing -> ctxAddVariable ctx (ident, t, getChangeMode cm)
+          Just r -> ctxAddRoutineVariable ctx r (ident, t, getChangeMode cm)
       in
-        (ctx', TypedStoDecl ident)
-  analyzeDecl (FunDecl ident params returns locals body) ctx =
+        (ctx', routine, TypedStoDecl ident)
+
+  analyzeDecl (FunDecl ident params returns locals body) (ctx, _) =
     let
-      ctx' = ctxMakeLocal ctx
+      ctx' = ctxAddRoutine ctx (ident, Just retType)
+      (ctx1, params') = analyzeParams ident params ctx'
       retType = getFunRetType returns
-      (ctx1, returns') = analyzeDecl returns ctx'
-      (ctx2, locals') = analyzeCpsDecl (getCpsDecl locals) ctx1
-      (ctx3, analyzedParams) = analyzeParams params ctx2
-      ctx4 = ctxAddRoutine ctx (ident, Just retType, analyzedParams, ctx3)
-      body' = analyzeCmd body ctx3
+      (ctx2, _, returns') = analyzeDecl returns (ctx1, Nothing)
+      ctx3 = ctxSetRoutineParams ctx2 ident params'
+      (ctx4, _, locals') = analyzeCpsDecl (getCpsDecl locals) (ctx3, Just ident)
+      body' = analyzeCmd body (ctx4, Just ident)
       in
-        (ctx4, TypedFunDecl ident analyzedParams returns' (TypedCpsDecl locals') body')
-  analyzeDecl (ProcDecl ident params locals body) ctx =
-    let
-      ctx' = ctxMakeLocal ctx
-      (ctx1, locals') = analyzeCpsDecl (getCpsDecl locals) ctx'
-      (ctx2, params') = analyzeParams params ctx1
-      ctx3 = ctxAddRoutine ctx (ident, Nothing, params', ctx2)
-      body' = analyzeCmd body ctx3
-      in
-        (ctx3, TypedProcDecl ident params' (TypedCpsDecl locals') body')
+        (ctx4, Nothing, TypedFunDecl ident params' returns' (TypedCpsDecl locals') body')
 
-  analyzeCpsDecl :: [Decl] -> Context -> (Context, [TypedDecl])
-  analyzeCpsDecl [] ctx = (ctx, [])
-  analyzeCpsDecl (d : ds) ctx =
+  analyzeDecl (ProcDecl ident params locals body) (ctx, _) =
     let
-      (ctx', d') = analyzeDecl d ctx
-      (ctx'', ds') = analyzeCpsDecl ds ctx'
+      ctx' = ctxAddRoutine ctx (ident, Nothing)
+      (ctx1, params') = analyzeParams ident params ctx'
+      ctx2 = ctxSetRoutineParams ctx1 ident params'
+      (ctx3, _, locals') = analyzeCpsDecl (getCpsDecl locals) (ctx2, Just ident)
+      body' = analyzeCmd body (ctx3, Just ident)
       in
-        (ctx'', d' : ds')
+        (ctx3, Nothing, TypedProcDecl ident params' (TypedCpsDecl locals') body')
 
-  analyzeCmd :: Command -> Context -> TypedCommand
+  analyzeCpsDecl :: [Decl] -> (Context, Maybe Ident) -> (Context, Maybe Ident, [TypedDecl])
+  analyzeCpsDecl [] (ctx, routine) = (ctx, routine, [])
+  analyzeCpsDecl (d : ds) (ctx, routine) =
+    let
+      (ctx', routine', d') = analyzeDecl d (ctx, routine)
+      (ctx'', routine'', ds') = analyzeCpsDecl ds (ctx', routine')
+      in
+        (ctx'', routine'', d' : ds')
+
+  analyzeCmd :: Command -> (Context, Maybe Ident) -> TypedCommand
   analyzeCmd (CpsCmd cs) ctx = TypedCpsCmd (analyzeCpsCmd cs ctx)
   analyzeCmd SkipCmd _ = TypedSkipCmd
   analyzeCmd (DebugInCmd expr) ctx =
@@ -219,14 +259,14 @@ module StaticAnalysis where
       cmd' = analyzeCmd cmd ctx
       in
         TypedWhileCmd rExpr cmd'
-  analyzeCmd (ProcCallCmd (ident, params)) ctx =
+  analyzeCmd (ProcCallCmd (ident, params)) (ctx, routine) =
     let
       _ = ctxCheckIsProc ctx ident
-      actualRoutineCall = analyzeRoutineCall (ident, params) ctx
+      actualRoutineCall = analyzeRoutineCall (ident, params) (ctx, routine)
       in
         TypedProcCallCmd actualRoutineCall
 
-  analyzeCpsCmd :: [Command] -> Context -> [TypedCommand]
+  analyzeCpsCmd :: [Command] -> (Context, Maybe Ident) -> [TypedCommand]
   analyzeCpsCmd [] _ = []
   analyzeCpsCmd (c : cs) ctx =
     let
@@ -235,33 +275,37 @@ module StaticAnalysis where
       in
         (c' : cs')
 
-  analyzeParams :: [Parameter] -> Context -> (Context, [Param])
-  analyzeParams [] ctx = (ctx, [])
-  analyzeParams (p : ps) ctx =
+  analyzeParams :: Ident -> [Parameter] -> Context -> (Context, [Param])
+  analyzeParams _ [] ctx = (ctx, [])
+  analyzeParams ident (p : ps) ctx =
     let
-      (ctx', p') = analyzeParam p ctx
-      (ctx'', ps') = analyzeParams ps ctx'
+      (ctx', p') = analyzeParam ident p ctx
+      (ctx'', ps') = analyzeParams ident ps ctx'
       in
         (ctx'', p' : ps')
 
-  analyzeParam :: Parameter -> Context -> (Context, Param)
-  analyzeParam ((ident, t), mm, cm) ctx = (ctx, Param { parIdent = ident, parType = t, parMechMode = getMechMode mm, parChangeMode = getChangeMode cm })
+  analyzeParam :: Ident -> Parameter -> Context -> (Context, Param)
+  analyzeParam routineIdent ((ident, t), mm, cm) ctx =
+    let
+      cm' = getChangeMode cm
+      ctx' = ctxAddRoutineVariable ctx routineIdent (ident, t, cm')
+        in
+          (ctx', Param { parIdent = ident, parType = t, parMechMode = getMechMode mm, parChangeMode = cm' })
 
   -- Expressions
-  genLOrRExpr :: Expr -> Context -> Either LExpr RExpr
+  genLOrRExpr :: Expr -> (Context, Maybe Ident) -> Either LExpr RExpr
   genLOrRExpr (StoreExpr ident cm) ctx = Left (getLExpr (StoreExpr ident cm) ctx)
   genLOrRExpr expr ctx = Right (getRExpr expr ctx)
 
-  getLExpr :: Expr -> Context -> LExpr
-  getLExpr (StoreExpr ident _) ctx =
+  getLExpr :: Expr -> (Context, Maybe Ident) -> LExpr
+  getLExpr (StoreExpr ident _) (ctx, routine) =
     let
-      _ = ctxCheckVarIsDefined ctx ident
-      t = ctxGetVariableType ctx ident
+      t = ctxGetVariableType (ctx, routine) ident
       in
         (StoreLExpr ident CONST COPY, t)
   getLExpr _ _ = error "Expected lExpr"
 
-  getRExpr :: Expr -> Context -> RExpr
+  getRExpr :: Expr -> (Context, Maybe Ident) -> RExpr
   getRExpr (LiteralExpr val) _ = (LiteralRExpr val, getLiteralType val)
   getRExpr (StoreExpr ident initialize) ctx =
     let
@@ -281,10 +325,9 @@ module StaticAnalysis where
       t' = getDyadicOpType op t1 t2
       in
         (DyadicRExpr op (expr1', t1) (expr2', t2), t')
-  getRExpr (FunCallExpr (ident, params)) ctx =
+  getRExpr (FunCallExpr (ident, params)) (ctx, routine) =
     let
-      _ = ctxCheckRoutineIsDefined ctx ident
-      (ident', params') = analyzeRoutineCall (ident, params) ctx
+      (ident', params') = analyzeRoutineCall (ident, params) (ctx, routine)
       t' = fromMaybe
         (error "Routine without return type in expression, use call instead")
         (ctxGetFunReturnType ctx ident)
@@ -297,14 +340,14 @@ module StaticAnalysis where
   getLiteralType (RatioVal _) = RatioType
 
   -- RoutineCalls
-  analyzeRoutineCall :: RoutineCall -> Context -> ActualRoutineCall
+  analyzeRoutineCall :: RoutineCall -> (Context, Maybe Ident) -> ActualRoutineCall
   analyzeRoutineCall (ident, params) ctx =
     let
       params' = analyzeRcExprs params ctx
       in
         (ident, params')
 
-  analyzeRcExprs :: [Expr] -> Context -> [ActualParameter]
+  analyzeRcExprs :: [Expr] -> (Context, Maybe Ident) -> [ActualParameter]
   analyzeRcExprs [] _ = []
   analyzeRcExprs (p : ps) ctx =
     let
@@ -313,7 +356,7 @@ module StaticAnalysis where
       in
         (p' : ps')
 
-  analyzeRcExpr :: Expr -> Context -> ActualParameter
+  analyzeRcExpr :: Expr -> (Context, Maybe Ident) -> ActualParameter
   analyzeRcExpr expr ctx = (COPY, genLOrRExpr expr ctx)
 
   -- Operators
