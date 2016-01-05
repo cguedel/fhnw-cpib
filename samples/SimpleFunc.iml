@@ -13,28 +13,23 @@ global
     //x := (k + 1) + i + j
   //endproc;
 
-  //fun getZ () returns zx:ratio
-//  local
-//    var g:bool
-  //do
-//    skip //zx := z
-  //endfun
-//;
-  proc procZ ()
+  fun getZ () returns zx:ratio
+  local
+    var g:bool
   do
-  if true then
-    if true then
-      debugout true
-    else
-      debugout false
-    endif
-  else
-    if true then
-      debugout true
-    else
-      debugout false
-    endif
-  endif
+    zx := z;
+    zx := zx + 100
+  endfun;
+//;
+  proc procZ (max:int,min:int)
+  local
+    y:int
+  do
+    while min < max
+    do
+      min := min + 1;
+      z := z + 5
+    endwhile
   endproc
 
   //;proc next()
@@ -59,9 +54,7 @@ do
   //debugout y - z;
   //debugout y * z;
   //debugout y divE z
-  while z < 100
-  do
-    z := z + 1
-  endwhile;
-  debugout z
+  z := 34;
+  debugout z;
+  debugout getZ()
 endprogram

@@ -51,7 +51,7 @@ public class Program {
 			code.put(i, c);
 		}
 
-		new VirtualMachine(code, 1024);
+		new VirtualMachine(code, 20);
 	}
 
 	private static IInstr getInstrFromString(String instr) {

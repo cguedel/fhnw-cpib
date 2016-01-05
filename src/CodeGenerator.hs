@@ -35,25 +35,8 @@ module CodeGenerator (genCode) where
     where
       Routine { routVars = rv } = ctxGetRoutine ctx routine
 
-  ctxGetVar :: Context -> Maybe Ident -> Ident -> (Variable, Bool)
-  ctxGetVar ctx Nothing ident = (ctxGetGlobalVar ctx ident, True)
-  ctxGetVar ctx (Just routineIdent) ident =
-    let
-      Routine { routVars = rv } = ctxGetRoutine ctx routineIdent
-      isRoutineVar = M.member ident rv
-      in
-        if isRoutineVar then
-          (rv M.! ident, False)
-        else
-          ctxGetVar ctx Nothing ident
-
   ctxGetVarAddr :: Variable -> Int
   ctxGetVarAddr Variable { varAddr = a } = a
-
-  ctxGetGlobalVar :: Context -> Ident -> Variable
-  ctxGetGlobalVar Context { ctxVars = v } ident
-    | M.member ident v = v M.! ident
-    | otherwise = error $ "Undefined global variable: " ++ ident
 
   ctxSetRoutineAddr :: Context -> Ident -> Int -> Context
   ctxSetRoutineAddr ctx routine addr =
@@ -61,6 +44,20 @@ module CodeGenerator (genCode) where
       Routine { routVars = v, routType = t, routParams = p } = ctxGetRoutine ctx routine
       in
         ctxSetRoutine ctx routine Routine { routVars = v, routType = t, routParams = p, routAddr = addr }
+
+  ctxGetRoutineAddr :: Context -> Ident -> Int
+  ctxGetRoutineAddr ctx routine =
+    let
+      Routine { routAddr = a } = ctxGetRoutine ctx routine
+      in
+        a
+
+  ctxGetRoutineVarCount :: Context -> Ident -> Int
+  ctxGetRoutineVarCount ctx routine =
+    let
+      Routine { routVars = v } = ctxGetRoutine ctx routine
+      in
+        length (M.elems v)
 
   -- Declarations
   genCpsDecl :: (Context, Maybe Ident) -> [TypedDecl] -> (Context, Maybe Ident, [Instr])
@@ -89,19 +86,40 @@ module CodeGenerator (genCode) where
         (ctx', Nothing, instr)
   genDecl (ctx, Nothing) (TypedProcDecl ident params (TypedCpsDecl locals) (TypedCpsCmd body)) =
     let
-      ctx' = ctxIncrLocBy ctx 1
+      ctx' = ctxIncrLocBy ctx 1 -- Make room for the uncondjump to skip over the routine at program start
       addr = ctxGetLoc ctx'
       ctx'' = ctxSetRoutineAddr ctx' ident addr
-      (routCtx, paramsInstr) = genParams (ctx'', ident) params
-      (routCtx', _, localsInstr) = genCpsDecl (routCtx, Just ident) locals
-      (_, _, bodyInstr) = genCpsCmd (routCtx', Just ident) body
-      routInstr = Return 3 : bodyInstr ++ localsInstr ++ paramsInstr
+      paramsInstr = genParams (ctx'', ident) params
+      routCtx' = ctxIncrLoc ctx'' paramsInstr
+      (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
+      (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
+      numLocalVars = ctxGetRoutineVarCount ctx ident - length params
+      routInstr = Return numLocalVars : bodyInstr ++ localsInstr ++ paramsInstr
       routLength = length routInstr
       jump = UncondJump (addr + routLength)
       allInstr = routInstr
       finalCtx = ctxIncrLoc ctx'' allInstr
       in
         (finalCtx, Nothing, allInstr ++ [jump])
+  genDecl (ctx, Nothing) (TypedFunDecl ident params returns (TypedCpsDecl locals) (TypedCpsCmd body)) =
+    let
+      ctx' = ctxIncrLocBy ctx 1 -- Make room for the uncondjump to skip over the routine at program start
+      addr = ctxGetLoc ctx'
+      ctx'' = ctxSetRoutineAddr ctx' ident addr
+      (routCtx, _, returnInstr) = genDecl (ctx'', Just ident) returns
+      paramsInstr = genParams (routCtx, ident) params
+      routCtx' = ctxIncrLoc routCtx paramsInstr
+      (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
+      (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
+      numLocalVars = ctxGetRoutineVarCount ctx ident - length params
+      routInstr = Return numLocalVars : bodyInstr ++ localsInstr ++ paramsInstr ++ returnInstr
+      routLength = length routInstr
+      jump = UncondJump (addr + routLength)
+      allInstr = routInstr
+      finalCtx = ctxIncrLoc ctx'' allInstr
+      in
+        (finalCtx, Nothing, allInstr ++ [jump])
+  genDecl _ _ = error "Internal error: Unknown declaration"
 
   genLocalVarDecl :: Variable -> [Instr]
   genLocalVarDecl Variable { varType = t, varAddr = a } = [Store, genTypeInit t, LoadAddrRel (a + 3), AllocBlock 1]
@@ -109,24 +127,24 @@ module CodeGenerator (genCode) where
   genGlobalVarDecl :: Variable -> [Instr]
   genGlobalVarDecl Variable { varType = t, varAddr = a } = [Store, genTypeInit t, LoadImInt a, AllocBlock 1]
 
-  genParams :: (Context, Ident) -> [Param] -> (Context, [Instr])
-  genParams (ctx, _) [] = (ctx, [])
+  genParams :: (Context, Ident) -> [Param] -> [Instr]
+  genParams (_, _) [] = []
   genParams (ctx, ident) (p : ps) =
     let
-      (ctx', i) = genParam (ctx, ident) p
-      (ctx'', is) = genParams (ctx', ident) ps
+      i = genParam (ctx, ident) p
+      is = genParams (ctx, ident) ps
       in
-        (ctx'', is ++ i)
+        is ++ i
 
-  genParam :: (Context, Ident) -> Param -> (Context, [Instr])
+  genParam :: (Context, Ident) -> Param -> [Instr]
   genParam (ctx, routine) Param { parIdent = ident } =
     let
       variable = ctxGetLocalVar ctx routine ident
       addr = ctxGetVarAddr variable
       declInstr = genLocalVarDecl variable
-      loadInstr = [Store, Deref, LoadAddrRel (addr * (-1) - 4), LoadAddrRel (addr + 3)]
+      loadInstr = [Store, Deref, LoadAddrRel (addr * (-1) - 1), LoadAddrRel (addr + 3)]
       in
-        (ctx, loadInstr ++ declInstr)
+        loadInstr ++ declInstr
 
   genTypeInit :: Type -> Instr
   genTypeInit RatioType = LoadImRatio 0 1
@@ -193,6 +211,14 @@ module CodeGenerator (genCode) where
       finalCtx = ctxIncrLoc ctx code
       in
         (finalCtx, ident, code)
+  genCmd (ctx, ident) (TypedProcCallCmd (routineIdent, params)) =
+    let
+      routineAddr = ctxGetRoutineAddr ctx routineIdent
+      paramInstr = genParamsLoad (ctx, ident) params
+      code = Call routineAddr : paramInstr
+      finalCtx = ctxIncrLoc ctx code
+      in
+        (finalCtx, ident, code)
 
   genDebugInCmd :: String -> Type -> Instr
   genDebugInCmd s BoolType = InputBool s
@@ -204,7 +230,23 @@ module CodeGenerator (genCode) where
   genDebugOutCmd s IntType = OutputInt s
   genDebugOutCmd s RatioType = OutputRatio s
 
+  genParamsLoad :: (Context, Maybe Ident) -> [ActualParameter] -> [Instr]
+  genParamsLoad (_, _) [] = []
+  genParamsLoad (ctx, ident) (p : ps) =
+    let
+      instr = genParamLoad (ctx, ident) p
+      instrs = genParamsLoad (ctx, ident) ps
+      in
+        (instr ++ instrs)
+
+  genParamLoad :: (Context, Maybe Ident) -> ActualParameter -> [Instr]
+  genParamLoad (ctx, ident) (_, expr) = genLOrRExprInstr (ctx, ident) expr
+
   -- Expressions
+  genLOrRExprInstr :: (Context, Maybe Ident) -> Either LExpr RExpr -> [Instr]
+  genLOrRExprInstr (ctx, ident) (Left lExpr) = genLExpr (ctx, ident) lExpr
+  genLOrRExprInstr (ctx, ident) (Right rExpr) = genRExpr (ctx, ident) rExpr
+
   genLExpr :: (Context, Maybe Ident) -> LExpr -> [Instr]
   genLExpr (ctx, routine) (StoreLExpr ident _ _, _) =
     let
@@ -233,6 +275,13 @@ module CodeGenerator (genCode) where
       t = getCompatibleType (getRExprType rExpr1) (getRExprType rExpr2)
       operatorInstr = genOp t operator
       code = operatorInstr : rExpr2Instr ++ rExpr1Instr
+      in
+        code
+  genRExpr (ctx, routine) (FunCallRExpr (routineIdent, params), _) =
+    let
+      routineAddr = ctxGetRoutineAddr ctx routineIdent
+      paramInstr = genParamsLoad (ctx, routine) params
+      code = Call routineAddr : paramInstr ++ [AllocBlock 1]
       in
         code
 

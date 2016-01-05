@@ -3,6 +3,9 @@
 
 package ch.fhnw.cpib.vm;
 
+import java.io.PrintStream;
+
+import ch.fhnw.cpib.vm.Data.IBaseData;
 import ch.fhnw.cpib.vm.IInstructions.*;
 
 public class VirtualMachine implements IVirtualMachine {
@@ -67,17 +70,50 @@ public class VirtualMachine implements IVirtualMachine {
         ep= 0;
         hp= store.length - 1;
         fp= 0;
+        
+        try {
         while (pc > -1)
         {
         	//System.out.println(code[pc]);
         	//System.out.println("sp = " + sp);
         	IExecInstr instr = code[pc];
         	System.out.println(instr);
-            code[pc].execute();
+            instr.execute();
+        }
+        } catch (Exception e)
+        {
+        	this.writeStack();        	
+        	throw e;
         }
     }
 
-    // stop instruction
+    private void writeStack() {
+    	System.out.println("Stack: ");
+    	
+    	for (int i = store.length - 1; i >= 0; i--)
+		{
+			IBaseData elem = store[i];
+			if (elem != null)
+			{
+				String s = "";
+				if (i == fp)
+				{
+					s = " <-- fp";
+				}
+				if (i == sp)
+				{
+					s = " <-- sp";
+				}
+				
+				System.out.println("[" + i + "] " + elem.toString() + " " + s);
+			}
+		}
+    	
+    	System.out.println("sp = " + sp);
+    	System.out.println("fp = " + fp);
+	}
+
+	// stop instruction
     public class StopExec extends Stop implements IExecInstr {
         public void execute()
         {

@@ -16,6 +16,11 @@ public class Data
         IntData(int i) { this.i= i; }
         int getData() { return i; }
         public IntData copy() { return intCopy(this); }
+        
+        public String toString()
+        {
+        	return Integer.toString(i);
+        }
     }
 
     static IntData intNew(int i)
@@ -39,6 +44,10 @@ public class Data
     	RatioData(Ratio r) { this.r = r; }
     	Ratio getData() { return r; }
     	public RatioData copy() { return ratioCopy(this); }
+    	
+    	public String toString() {
+    		return r.toString();
+    	}
     }
     
     static RatioData ratioNew(Ratio r)

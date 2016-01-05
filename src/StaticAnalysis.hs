@@ -126,30 +126,29 @@ module StaticAnalysis where
     | M.member ident v = True
     | otherwise = error $ "Undefined variable: " ++ ident
 
-  ctxGetVariableType :: (Context, Maybe Ident) -> Ident -> Type
-  ctxGetVariableType (Context { ctxVars = v, ctxRoutines = r }, routine) ident =
+  ctxGetGlobalVar :: Context -> Ident -> Variable
+  ctxGetGlobalVar Context { ctxVars = v } ident
+    | M.member ident v = v M.! ident
+    | otherwise = error $ "Undefined global variable: " ++ ident
+
+  ctxGetVar :: Context -> Maybe Ident -> Ident -> (Variable, Bool)
+  ctxGetVar ctx Nothing ident = (ctxGetGlobalVar ctx ident, True)
+  ctxGetVar ctx (Just routineIdent) ident =
     let
-      isLocalVar = case routine of
-        Nothing -> False
-        Just rout -> M.member rout r
+      Routine { routVars = rv } = ctxGetRoutine ctx routineIdent
+      isRoutineVar = M.member ident rv
       in
-        if isLocalVar then
-          let
-            Routine { routVars = rv } = (r M.! fromMaybe "" routine)
-            in
-              if M.member ident rv then
-                let Variable { varType = t } = rv M.! ident
-                  in t
-              else
-                error $ "Undefined local variable: " ++ ident
+        if isRoutineVar then
+          (rv M.! ident, False)
         else
-          if M.member ident v then
-            let
-              Variable { varType = t } = v M.! ident
-              in
-                t
-          else
-            error $ "Undefined global variable: " ++ ident
+          ctxGetVar ctx Nothing ident
+
+  ctxGetVariableType :: (Context, Maybe Ident) -> Ident -> Type
+  ctxGetVariableType (ctx, routine) ident =
+    let
+      (Variable { varType = t }, _) = ctxGetVar ctx routine ident
+      in
+        t
 
   ctxCheckRoutineIsDefined :: Context -> Ident -> Bool
   ctxCheckRoutineIsDefined Context { ctxRoutines = r } ident
@@ -200,7 +199,7 @@ module StaticAnalysis where
       ctx' = ctxAddRoutine ctx (ident, Just retType)
       (ctx1, params') = analyzeParams ident params ctx'
       retType = getFunRetType returns
-      (ctx2, _, returns') = analyzeDecl returns (ctx1, Nothing)
+      (ctx2, _, returns') = analyzeDecl returns (ctx1, Just ident)
       ctx3 = ctxSetRoutineParams ctx2 ident params'
       (ctx4, _, locals') = analyzeCpsDecl (getCpsDecl locals) (ctx3, Just ident)
       body' = analyzeCmd body (ctx4, Just ident)
