@@ -54,8 +54,10 @@ do
   //debugout y - z;
   //debugout y * z;
   //debugout y divE z
-  z := 34;
-  debugout z;
+  z := 5;
+  call procZ(4,2);
+  //z := 34;
+  //debugout z;
   debugout getZ();
   debugout z
 endprogram
