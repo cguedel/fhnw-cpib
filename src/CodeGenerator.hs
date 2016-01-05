@@ -156,6 +156,14 @@ module CodeGenerator (genCode) where
       ctx' = ctxIncrLoc ctx code
       in
         (ctx', ident, code)
+  genCmd (ctx, ident) (TypedAssiCmd lExpr rExpr) =
+    let
+      lExprInstr = genLExpr (ctx, ident) lExpr
+      rExprInstr = genRExpr (ctx, ident) rExpr
+      code = Store : rExprInstr ++ lExprInstr
+      ctx' = ctxIncrLoc ctx code
+      in
+        (ctx', ident, code)
 
   genDebugInCmd :: Type -> Instr
   genDebugInCmd BoolType = InputBool ""
@@ -181,3 +189,58 @@ module CodeGenerator (genCode) where
 
   genRExpr :: (Context, Maybe Ident) -> RExpr -> [Instr]
   genRExpr (ctx, routine) (DerefRExpr lExpr, _) = Deref : genLExpr (ctx, routine) lExpr
+  genRExpr _ (LiteralRExpr value, t) = [genLiteralLoad t value]
+  genRExpr (ctx, routine) (MonadicRExpr operator rExpr, t) =
+    let
+      rExprInstr = genRExpr (ctx, routine) rExpr
+      operatorInstr = genOp t operator
+      code = operatorInstr : rExprInstr
+      in
+        code
+  genRExpr (ctx, routine) (DyadicRExpr operator rExpr1 rExpr2, _) =
+    let
+      rExpr1Instr = genRExpr (ctx, routine) rExpr1
+      rExpr2Instr = genRExpr (ctx, routine) rExpr2
+      t = getCompatibleType (getRExprType rExpr1) (getRExprType rExpr2)
+      operatorInstr = genOp t operator
+      code = operatorInstr : rExpr2Instr ++ rExpr1Instr
+      in
+        code
+
+  genLiteralLoad :: Type -> Value -> Instr
+  genLiteralLoad RatioType (RatioVal (num, denom)) = LoadImRatio num denom
+  genLiteralLoad IntType (IntVal int) = LoadImInt int
+  genLiteralLoad BoolType (BoolVal bool) = if bool then LoadImInt 1 else LoadImInt 0
+  genLiteralLoad _ _ = error "Type mismatch for literal load instruction"
+
+  getRExprType :: RExpr -> Type
+  getRExprType (_, t) = t
+
+  genOp :: Type -> Operator -> Instr
+  genOp _ Num = NumRatio
+  genOp _ Denom = DenomRatio
+  genOp _ Round = RoundRatio
+  genOp _ Floor = FloorRatio
+  genOp _ Ceil = CeilRatio
+  genOp RatioType Less = LtRatio
+  genOp RatioType LessEq = LeRatio
+  genOp RatioType Equal = EqRatio
+  genOp RatioType NotEq = NeRatio
+  genOp RatioType Greater = GtRatio
+  genOp RatioType GreaterEq = GeRatio
+  genOp RatioType Plus = AddRatio
+  genOp RatioType Minus = SubRatio
+  genOp RatioType Times = MultRatio
+  genOp RatioType Div = DivTruncRatio
+  genOp _ Less = LtInt
+  genOp _ LessEq = LeInt
+  genOp _ Equal = EqInt
+  genOp _ NotEq = NeInt
+  genOp _ Greater = GtInt
+  genOp _ GreaterEq = GeInt
+  genOp IntType Mod = ModTruncInt
+  genOp _ Plus = AddInt
+  genOp _ Minus = SubInt
+  genOp _ Times = MultInt
+  genOp _ Div = DivTruncInt
+  genOp _ _ = undefined

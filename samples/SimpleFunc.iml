@@ -1,6 +1,7 @@
 program SimpleFunc
 global
   const y:ratio;
+  const z:ratio;
   //const y:int;
   //const b:bool;
   //const i:int;
@@ -41,5 +42,10 @@ do
   // debugout getZ();
   // call getZ()
   debugin y;
-  debugout y
+  debugin z;
+  debugout (y + z) > (y - z)
+  //debugout y > z
+  //debugout y - z;
+  //debugout y * z;
+  //debugout y divE z
 endprogram
