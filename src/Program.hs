@@ -34,7 +34,7 @@ parse (fIn : fOut : _) = do
 
         let (ctx, code) = genCode analyzed
         let indexed = zipCode [0..] code
-        let numbered = map (\(c, i) -> "[" ++ show i ++ "] " ++ show c) indexed
+        let numbered = map (\(i, c) -> "[" ++ show i ++ "] " ++ show c) indexed
         putStrLn "-------- Generated instructions --------"
         mapM_ putStrLn numbered
 
