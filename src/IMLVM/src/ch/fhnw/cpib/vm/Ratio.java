@@ -18,64 +18,119 @@ public class Ratio {
 	}
 
 	public String toString() {
-		return this.numerator + "/" + this.denominator;
+		if (this.isPeriodic()){
+		return this.getInteger() + "." + this.decimalpoints() /*+ "(" + this.periodicpoints() + ")"+*/;
+		}
+		else{
+		return this.getRatioFormat() +"";
+		}
+		
 	}
 	
+	private int periodicpoints() {
+		
+		return 0;
+	}
+
 	// Helping Stuff to find out if a Ratio is periodic
-	public boolean isPeriodic (Ratio r){
-		
-		int d = r.denominator;
-		
-		return (!((d%5 == 0) || (d%2 == 0)));
-		
+	public boolean isPeriodic (){
+		Ratio check = this.getCanceled();
+		int period = check.denominator;
+		while (period%2 == 0){
+			period = period/2;
+		}
+		while (period%5 == 0){
+			period = period/5;			
+		}
+		return (!(period == 0));
 	}
 	
     public double getRatioFormat(){		
-		
 		double n = ((double)this.numerator/this.denominator);
 		return n;
-		
 	};
 	
 	public int getInteger(){
 		int n = (this.numerator/this.denominator);
 		return n;
 	}
-	// does nothing logical at the moment
-	public int decimalpoints(){
+	
+	// Returns the not Periodic Part of the Floating Point Number
+	public String decimalpoints(){
 		int count2 = 0;
 		int count5 = 0;
-		int denom = this.denominator;
-		int num = this.numerator;
-
+		int denom;
+		int num;
 		
+		//I think only Jack Bauer knows what im doing here, and me... so I'm as good as Jack ;-)
+		
+		int RatioIsBiggerThanOne = (int)(this.getRatioFormat());
+		
+		if(this.numerator>this.denominator){
+			Ratio ratioBiggerThanOne = new Ratio(RatioIsBiggerThanOne,1);
+			Ratio small = sub(this, ratioBiggerThanOne);
+			denom = small.denominator;
+			num = small.numerator;
+		} else {
+			denom = this.denominator;
+			num = this.numerator;
+		}
 		
 		while (denom%2 == 0){
 			denom = denom/2;
-			count2++;		
+			count2++;
 		}
 		
 		while (denom%5 == 0){
 			denom = denom/5;
 			count5++;			
 		}
+		int basis;
+		int exponent = (int)(Math.abs(count2-count5));
 		
-		int exponent = count2-count5;
-				
-		
-		int extd = (int)(Math.pow(5, exponent));
-		System.out.println(extd);
+		if (count2 > count5){
+			basis = 5;
+		} else {
+			basis = 2;
+		}
+		int extd = (int)(Math.pow(basis, exponent));
+	//	System.out.println("Basis: " + basis);
+	//	System.out.println("Exponent: " + exponent);
+	//	System.out.println("#2: " + count2);
+	//	System.out.println("#5: " + count5);
+	//	System.out.println("Erweiterung: " + extd);
 				
 		int nnum = extd*num;
-		System.out.println(nnum);
+		int ndenom = extd*(this.denominator);
+	//	System.out.println("Bruch: " + nnum + "/" + ndenom);
 		
-		int minifrac  = nnum/denom;
-		int minifracr = nnum%denom;
+		int count10 = 0;
 		
-		Ratio rdec = new Ratio(minifrac, (int)(Math.pow(2,count2)*(Math.pow(5, count5))));
-		Ratio rinv = new Ratio(minifracr, (int)(denom*(Math.pow(2,count2)*(Math.pow(5, count5)))));
- 		
-		return denom;
+		while (ndenom%10 == 0){
+			ndenom = ndenom/10;
+			count10++;			
+		}
+	//	System.out.println("#0: " + count10);
+				
+		int decimalnum = nnum/ndenom;
+		int decimaldenom = (int)Math.pow(10, count10);
+		
+	//	System.out.println("Dezimalteilbruch: " + decimalnum + "/" + decimaldenom);
+		
+		Ratio decimal = new Ratio(decimalnum, decimaldenom);
+		
+		String str = decimal.getRatioFormat()+"";
+		
+	//	System.out.println(str);
+				
+		str = (str.replaceFirst("0", "")).replace(".", "");
+		
+		if (str.matches("0"))
+			str = "Jack";
+				
+	//	System.out.println(str);
+		
+		return str;
 		
 	}
 	
