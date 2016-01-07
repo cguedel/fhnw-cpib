@@ -5,20 +5,23 @@ public class RatioTest {
 	public static void main(String[] args) {
 		
 		
-		Ratio r = new Ratio(400, 4);
+		Ratio r = new Ratio(1, 280);
 		
-		Ratio gr = r.getCanceled();
+		System.out.println(r.toString());
 		
-		System.out.println(gr.toString());
 		
-		System.out.println(gr.isPeriodic(r));
 		
-		double d = gr.getRatioFormat();
 		
-		int i = gr.getInteger();
+		//System.out.println(gr.toString());
 		
-		System.out.println(d);
-		System.out.println(i);
+		//System.out.println(gr.isPeriodic());
+		
+		//double d = gr.getRatioFormat();
+		
+		//int i = gr.getInteger();
+		
+		//System.out.println(d);
+		//System.out.println(i);
 		
 
 	}
