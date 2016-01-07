@@ -20,6 +20,69 @@ public class Ratio {
 	public String toString() {
 		return this.numerator + "/" + this.denominator;
 	}
+	
+	// Helping Stuff to find out if a Ratio is periodic
+	public boolean isPeriodic (Ratio r){
+		
+		int d = r.denominator;
+		
+		return (!((d%5 == 0) || (d%2 == 0)));
+		
+	}
+	
+    public double getRatioFormat(){		
+		
+		double n = ((double)this.numerator/this.denominator);
+		return n;
+		
+	};
+	
+	public int getInteger(){
+		int n = (this.numerator/this.denominator);
+		return n;
+	}
+	// does nothing logical at the moment
+	public int decimalpoints(){
+		int count2 = 0;
+		int count5 = 0;
+		int denom = this.denominator;
+		int num = this.numerator;
+
+		
+		
+		while (denom%2 == 0){
+			denom = denom/2;
+			count2++;		
+		}
+		
+		while (denom%5 == 0){
+			denom = denom/5;
+			count5++;			
+		}
+		
+		int exponent = count2-count5;
+				
+		
+		int extd = (int)(Math.pow(5, exponent));
+		System.out.println(extd);
+				
+		int nnum = extd*num;
+		System.out.println(nnum);
+		
+		int minifrac  = nnum/denom;
+		int minifracr = nnum%denom;
+		
+		Ratio rdec = new Ratio(minifrac, (int)(Math.pow(2,count2)*(Math.pow(5, count5))));
+		Ratio rinv = new Ratio(minifracr, (int)(denom*(Math.pow(2,count2)*(Math.pow(5, count5)))));
+ 		
+		return denom;
+		
+	}
+	
+
+	
+	
+	// End of Helping Stuff
 
 	public Ratio getCanceled() {
 		int gcd = getGcd(this.numerator, this.denominator);
