@@ -14,8 +14,8 @@ do
 	//debugin pkt;
 	//debugin max;
 
-	//pkt := 35;
-	//max := 50;
+	pkt := 37;
+	max := 51;
 
 	//debugout calculate(pkt, max)
 	//grade := pkt * 5;
@@ -30,7 +30,7 @@ do
 	//grade := ((pkt * 5) divE max) + 1;
 	//debugout grade
 
-	debugout asRatio 35
+	debugout (asRatio (round ((((asRatio pkt * 5) divE max) + 1) * 10))) divE 10
 
 	//debugout (asRatio (pkt * 5)) divE max
 endprogram
