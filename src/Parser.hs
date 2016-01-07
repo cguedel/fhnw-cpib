@@ -114,6 +114,14 @@ module Parser where
             +++ storeExprP
             +++ monadicExprP
             +++ nestedExprP
+            +++ typeConvExprP
+
+  typeConvExprP :: ParserT Expr
+  typeConvExprP =
+    do
+      (TYPECOPR, Just (TypeAttrib RatioType), _) <- tokenP TYPECOPR
+      expr <- exprP
+      return (TypeConvExpr RatioType expr)
 
   nestedExprP :: ParserT Expr
   nestedExprP =
@@ -184,7 +192,7 @@ module Parser where
   plusExprP :: ParserT Expr
   plusExprP =
     do
-      (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR
+      (ADDOPR, Just (AddOprAttrib opr), _) <- tokenP ADDOPR
       expr <- exprP
       case opr of
         IML.Plus -> return (MonadicExpr Plus expr)
@@ -199,15 +207,24 @@ module Parser where
       return (MonadicExpr opr expr)
 
   dyadicExprP :: ParserT Expr
-  dyadicExprP = arithExprP
+  dyadicExprP = addOprExprP
+            +++ multOprExprP
             +++ relExprP
             +++ boolExprP
 
-  arithExprP :: ParserT Expr
-  arithExprP =
+  multOprExprP :: ParserT Expr
+  multOprExprP =
     do
       lExpr <- factorExprP
-      (ARITHOPR, Just (AOprAttrib opr), _) <- tokenP ARITHOPR
+      (MULTOPR, Just (MultOprAttrib opr), _) <- tokenP MULTOPR
+      rExpr <- exprP
+      return (DyadicExpr opr lExpr rExpr)
+
+  addOprExprP :: ParserT Expr
+  addOprExprP =
+    do
+      lExpr <- factorExprP
+      (ADDOPR, Just (AddOprAttrib opr), _) <- tokenP ADDOPR
       rExpr <- exprP
       return (DyadicExpr opr lExpr rExpr)
 

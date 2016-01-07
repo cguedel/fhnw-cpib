@@ -30,7 +30,8 @@ module IML where
     | BLitAttrib Bool
     | RLitAttrib Int Int
     | IdentAttrib String
-    | AOprAttrib Operator
+    | AddOprAttrib Operator
+    | MultOprAttrib Operator
     | BOprAttrib Operator
     | ROprAttrib Operator
     | RelOprAttrib Operator
@@ -58,9 +59,11 @@ module IML where
     | SEMICOLON
     | COLON
     | BECOMES
-    | ARITHOPR
+    | ADDOPR
+    | MULTOPR
     | BOOLOPR
     | RATIOOPR
+    | TYPECOPR
     | RELOPR
     | TYPE
     | CALL

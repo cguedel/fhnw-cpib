@@ -27,11 +27,11 @@ module Scanner(tokenize) where
   s0 ('|' : '?' : cs, l, accu) = s0 (cs, l, (BOOLOPR, Just (BOprAttrib Cor), (l, 0)) : accu)
 
   -- MultOpr
-  s0 ('*' : cs, l, accu) = s0 (cs, l, (ARITHOPR, Just (AOprAttrib Times), (l, 0)) : accu)
+  s0 ('*' : cs, l, accu) = s0 (cs, l, (MULTOPR, Just (MultOprAttrib Times), (l, 0)) : accu)
 
   -- AddOpr
-  s0 ('+' : cs, l, accu) = s0 (cs, l, (ARITHOPR, Just (AOprAttrib Plus), (l, 0)) : accu)
-  s0 ('-' : cs, l, accu) = s0 (cs, l, (ARITHOPR, Just (AOprAttrib Minus), (l, 0)) : accu)
+  s0 ('+' : cs, l, accu) = s0 (cs, l, (ADDOPR, Just (AddOprAttrib Plus), (l, 0)) : accu)
+  s0 ('-' : cs, l, accu) = s0 (cs, l, (ADDOPR, Just (AddOprAttrib Minus), (l, 0)) : accu)
 
   -- Symbols
   s0 (':' : '=' : cs, l, accu) = s0 (cs, l, (BECOMES, Nothing, (l, 0)) : accu)
@@ -85,6 +85,7 @@ module Scanner(tokenize) where
   s5 :: (String, Position) -> Token
   s5 (key, p) =
     case key of
+      "asRatio"     -> (TYPECOPR,   Just (TypeAttrib RatioType), p)
       "bool"        -> (TYPE,       Just (TypeAttrib BoolType), p)
       "call"        -> (CALL,       Nothing, p)
       "ceil"        -> (RATIOOPR,   Just (ROprAttrib Ceil), p)
@@ -93,7 +94,7 @@ module Scanner(tokenize) where
       "debugin"     -> (DEBUGIN,    Nothing, p)
       "debugout"    -> (DEBUGOUT,   Nothing, p)
       "denum"       -> (RATIOOPR,   Just (ROprAttrib Denom), p)
-      "divE"        -> (ARITHOPR,   Just (AOprAttrib Div), p)
+      "divE"        -> (MULTOPR,    Just (MultOprAttrib Div), p)
       "do"          -> (DO,         Nothing, p)
       "else"        -> (ELSE,       Nothing, p)
       "endfun"      -> (ENDFUN,     Nothing, p)
@@ -109,7 +110,7 @@ module Scanner(tokenize) where
       "init"        -> (INIT,       Nothing, p)
       "int"         -> (TYPE,       Just (TypeAttrib IntType), p)
       "local"       -> (LOCAL,      Nothing, p)
-      "modE"        -> (ARITHOPR,   Just (AOprAttrib Mod), p)
+      "modE"        -> (MULTOPR,    Just (MultOprAttrib Mod), p)
       "not"         -> (NOT,        Nothing, p)
       "num"         -> (RATIOOPR,   Just (ROprAttrib Num), p)
       "proc"        -> (PROC,       Nothing, p)

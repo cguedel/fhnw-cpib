@@ -58,6 +58,7 @@ module StaticAnalysis where
     | FunCallRExpr ActualRoutineCall
     | MonadicRExpr Operator RExpr
     | DyadicRExpr Operator RExpr RExpr
+    | TypeConvRExpr (Either LExpr RExpr)
     deriving (Show)
 
   data TypedCommand
@@ -292,9 +293,9 @@ module StaticAnalysis where
           (ctx', Param { parIdent = ident, parType = t, parMechMode = getMechMode mm, parChangeMode = cm' })
 
   -- Expressions
-  genLOrRExpr :: Expr -> (Context, Maybe Ident) -> Either LExpr RExpr
-  genLOrRExpr (StoreExpr ident cm) ctx = Left (getLExpr (StoreExpr ident cm) ctx)
-  genLOrRExpr expr ctx = Right (getRExpr expr ctx)
+  getLOrRExpr :: Expr -> (Context, Maybe Ident) -> Either LExpr RExpr
+  getLOrRExpr (StoreExpr ident cm) ctx = Left (getLExpr (StoreExpr ident cm) ctx)
+  getLOrRExpr expr ctx = Right (getRExpr expr ctx)
 
   getLExpr :: Expr -> (Context, Maybe Ident) -> LExpr
   getLExpr (StoreExpr ident _) (ctx, routine) =
@@ -332,6 +333,18 @@ module StaticAnalysis where
         (ctxGetFunReturnType ctx ident)
       in
         (FunCallRExpr (ident', params'), t')
+  getRExpr (TypeConvExpr RatioType expr) ctx =
+    let
+      expr' = getLOrRExpr expr ctx
+      t' = case expr' of
+        (Left (_, tl)) -> tl
+        (Right (_, tr)) -> tr
+      t'' = case t' of
+        BoolType -> error "Cannot convert bool to Ratio"
+        _ -> RatioType
+      in
+        (TypeConvRExpr expr', t'')
+  getRExpr (TypeConvExpr _ _) _ = error "Internal error, undefined type conversion expr"
 
   getLiteralType :: Value -> Type
   getLiteralType (IntVal _) = IntType
@@ -356,7 +369,7 @@ module StaticAnalysis where
         (p' : ps')
 
   analyzeRcExpr :: Expr -> (Context, Maybe Ident) -> ActualParameter
-  analyzeRcExpr expr ctx = (COPY, genLOrRExpr expr ctx)
+  analyzeRcExpr expr ctx = (COPY, getLOrRExpr expr ctx)
 
   -- Operators
   getMonadicOpType :: Operator -> Type -> Type

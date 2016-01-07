@@ -285,6 +285,9 @@ module CodeGenerator (genCode) where
       in
         code
 
+  -- Type conversion to ratio is handled internally in the VM
+  genRExpr (ctx, routine) (TypeConvRExpr expr, _) = genLOrRExprInstr (ctx, routine) expr
+
   genLiteralLoad :: Type -> Value -> Instr
   genLiteralLoad RatioType (RatioVal (num, denom)) = LoadImRatio num denom
   genLiteralLoad IntType (IntVal int) = LoadImInt int

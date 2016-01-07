@@ -40,12 +40,11 @@ module AbstractSyntax where
     | ProcDecl Ident [Parameter] (Maybe Decl) Command
     deriving (Show, Eq)
 
-  --type Expr = (ExprType, Maybe Type)
-
   data Expr
     = LiteralExpr Value
     | StoreExpr Ident IsInitialization
     | FunCallExpr RoutineCall
     | MonadicExpr Operator Expr
     | DyadicExpr Operator Expr Expr
+    | TypeConvExpr Type Expr
     deriving (Show, Eq)
