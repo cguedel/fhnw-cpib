@@ -2,5 +2,6 @@ program Assoc
   do
 
     //debugout 5 * 5 + 1
-    debugout 1 - 2 - 3
+    //debugout true |? false
+    debugout -3
 endprogram

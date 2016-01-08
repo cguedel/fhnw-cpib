@@ -104,188 +104,97 @@ module Parser where
       tP ENDPROC
       return (ProcDecl ident params locals cmd)
 
-  --exprP :: ParserT Expr
-  --exprP = term1P
-      -- +++ factorExprP
+  -- Common
+  epsilonExprP :: Expr -> ParserT Expr
+  epsilonExprP = return
 
+  -- Expressions
   exprP :: ParserT Expr
   exprP =
     do
-      term0 <- term0P
-      return (termToExpr term0)
-
-  termToExpr :: Term -> Expr
-  termToExpr (Term0Term1RepBoolOpr term1 right) = repBoolOprFactorToExpr term1 right
-  termToExpr (Term1Term2OptRelOpr term2 optRelOpr) = optRelOprFactorToExpr term2 optRelOpr
-  termToExpr (Term2Term3RepAddOpr term3 right) = repAddOprFactorToExpr term3 right
-  termToExpr (Term3FactorRepMultOpr factor right) = repMultOprFactorToExpr factor right
-
-  factorToExpr :: Factor -> Expr
-  factorToExpr (LiteralFactor value) = LiteralExpr value
-
-  optRelOprFactorToExpr :: Term -> OptRelOprFactor -> Expr
-  optRelOprFactorToExpr f (RelOprEps) = termToExpr f
-  optRelOprFactorToExpr left (RelOprFactor factor operator) =
-    let
-      left' = termToExpr left
-      right' = termToExpr factor
-      in
-        DyadicExpr operator left' right'
-
-  repBoolOprFactorToExpr :: Term -> RepBoolOprFactor -> Expr
-  repBoolOprFactorToExpr f (RepBoolOprFactorEps) = termToExpr f
-  repBoolOprFactorToExpr left (RepBoolOprFactorOpr factor operator right) =
-    let
-      left' = termToExpr left
-      right' = repBoolOprFactorToExpr factor right
-      in
-        DyadicExpr operator left' right'
-
-  repAddOprFactorToExpr :: Term -> RepAddOprFactor -> Expr
-  repAddOprFactorToExpr f (RepAddOprFactorEps) = termToExpr f
-  repAddOprFactorToExpr left (RepAddOprFactorOpr factor operator right) =
-    let
-      left' = termToExpr left
-      right' = repAddOprFactorToExpr factor right
-      in
-        DyadicExpr operator left' right'
-
-  repMultOprFactorToExpr :: Factor -> RepMultOprFactor -> Expr
-  repMultOprFactorToExpr f (RepMultOprFactorEps) = factorToExpr f
-  repMultOprFactorToExpr left (RepMultOprFactorOpr factor operator right) =
-      let
-        left' = factorToExpr left
-        right' = repMultOprFactorToExpr factor right
-        in
-          DyadicExpr operator left' right'
-
-  data Factor
-    = LiteralFactor Value
-
-  data RepMultOprFactor
-    = RepMultOprFactorOpr Factor Operator RepMultOprFactor
-    | RepMultOprFactorEps
-
-  data RepAddOprFactor
-    = RepAddOprFactorOpr Term Operator RepAddOprFactor
-    | RepAddOprFactorEps
-
-  data RepBoolOprFactor
-    = RepBoolOprFactorOpr Term Operator RepBoolOprFactor
-    | RepBoolOprFactorEps
-
-  data OptRelOprFactor
-    = RelOprFactor Term Operator
-    | RelOprEps
-
-  data Term
-    = Term0Term1RepBoolOpr Term RepBoolOprFactor
-    | Term1Term2OptRelOpr Term OptRelOprFactor
-    | Term2Term3RepAddOpr Term RepAddOprFactor
-    | Term3FactorRepMultOpr Factor RepMultOprFactor
-
-  term0P :: ParserT Term
-  term0P =
-    do
       term1 <- term1P
-      repBoolOpr <- repBoolOprFactorP
-      return (Term0Term1RepBoolOpr term1 repBoolOpr)
+      repBoolOprFactorP term1
 
-  term1P :: ParserT Term
+  repBoolOprFactorP :: Expr -> ParserT Expr
+  repBoolOprFactorP left =
+    repBoolOprFactorOprP left +++
+    epsilonExprP left
+
+  repBoolOprFactorOprP :: Expr -> ParserT Expr
+  repBoolOprFactorOprP left =
+    do
+      (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR
+      right <- term1P
+      right' <- repBoolOprFactorP right
+      return (DyadicExpr opr left right')
+
+  -- Term 1
+  term1P :: ParserT Expr
   term1P =
     do
       term2 <- term2P
-      optRelOpr <- optRelOprFactorP
-      return (Term1Term2OptRelOpr term2 optRelOpr)
+      optRelOprFactorP term2
 
-  term2P :: ParserT Term
+  optRelOprFactorP :: Expr -> ParserT Expr
+  optRelOprFactorP left =
+    optRelOprFactorOprP left +++
+    epsilonExprP left
+
+  optRelOprFactorOprP :: Expr -> ParserT Expr
+  optRelOprFactorOprP left =
+    do
+      (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR
+      right <- term2P
+      return (DyadicExpr opr left right)
+
+  -- Term 2
+  term2P :: ParserT Expr
   term2P =
     do
       term3 <- term3P
-      repAddOpr <- repAddOprFactorP
-      return (Term2Term3RepAddOpr term3 repAddOpr)
+      repAddOprFactorP term3
 
-  term3P :: ParserT Term
+  repAddOprFactorP :: Expr -> ParserT Expr
+  repAddOprFactorP left =
+    repAddOprFactorOprP left +++
+    epsilonExprP left
+
+  repAddOprFactorOprP :: Expr -> ParserT Expr
+  repAddOprFactorOprP left =
+    do
+      (ADDOPR, Just (AddOprAttrib opr), _) <- tokenP ADDOPR
+      right <- term3P
+      right' <- repAddOprFactorP right
+      return (DyadicExpr opr left right')
+
+  -- Term 3
+  term3P :: ParserT Expr
   term3P =
     do
       factor <- factorP
-      repMultOpr <- repMultOprFactorP
-      return (Term3FactorRepMultOpr factor repMultOpr)
+      repMultOprFactorP factor
 
-  optRelOprFactorP :: ParserT OptRelOprFactor
-  optRelOprFactorP = relOprFactorP +++ relOprFactorEpsP
+  repMultOprFactorP :: Expr -> ParserT Expr
+  repMultOprFactorP left =
+    repMultOprFactorOprP left +++
+    epsilonExprP left
 
-  relOprFactorP :: ParserT OptRelOprFactor
-  relOprFactorP =
-    do
-      (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR
-      term2 <- term2P
-      return (RelOprFactor term2 opr)
-
-  relOprFactorEpsP :: ParserT OptRelOprFactor
-  relOprFactorEpsP = return RelOprEps
-
-  repBoolOprFactorP :: ParserT RepBoolOprFactor
-  repBoolOprFactorP =
-    repBoolOprFactorOprP +++
-    repBoolOprFactorEpsP
-
-  repBoolOprFactorOprP :: ParserT RepBoolOprFactor
-  repBoolOprFactorOprP =
-    do
-      (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR
-      term1 <- term1P
-      repBoolOpr <- repBoolOprFactorP
-      return (RepBoolOprFactorOpr term1 opr repBoolOpr)
-
-  repBoolOprFactorEpsP :: ParserT RepBoolOprFactor
-  repBoolOprFactorEpsP = return RepBoolOprFactorEps
-
-  repAddOprFactorP :: ParserT RepAddOprFactor
-  repAddOprFactorP =
-    repAddOprFactorOprP +++
-    repAddOprFactorEpsP
-
-  repAddOprFactorOprP :: ParserT RepAddOprFactor
-  repAddOprFactorOprP =
-    do
-      (ADDOPR, Just (AddOprAttrib opr), _) <- tokenP ADDOPR
-      term3 <- term3P
-      repAddOpr <- repAddOprFactorP
-      return (RepAddOprFactorOpr term3 opr repAddOpr)
-
-  repAddOprFactorEpsP :: ParserT RepAddOprFactor
-  repAddOprFactorEpsP = return RepAddOprFactorEps
-
-  repMultOprFactorP :: ParserT RepMultOprFactor
-  repMultOprFactorP =
-    repMultOprFactorOprP +++
-    repMultOprFactorEpsP
-
-  repMultOprFactorOprP :: ParserT RepMultOprFactor
-  repMultOprFactorOprP =
+  repMultOprFactorOprP :: Expr -> ParserT Expr
+  repMultOprFactorOprP left =
     do
       (MULTOPR, Just (MultOprAttrib opr), _) <- tokenP MULTOPR
-      factor <- factorP
-      repMultOpr <- repMultOprFactorP
-      return (RepMultOprFactorOpr factor opr repMultOpr)
+      right <- factorP
+      right' <- repMultOprFactorP right
+      return (DyadicExpr opr left right')
 
-  repMultOprFactorEpsP :: ParserT RepMultOprFactor
-  repMultOprFactorEpsP = return RepMultOprFactorEps
-
-  factorP :: ParserT Factor
-  factorP =
-    do
-      (ALITERAL, Just (ALitAttrib val), _) <- tokenP ALITERAL
-      return (LiteralFactor (IntVal val))
-
-  factorExprP :: ParserT Expr
-  factorExprP = funCallExprP
-            +++ literalExprP
-            +++ storeExprP
-            +++ monadicExprP
-            +++ nestedExprP
-            +++ typeConvExprP
+  -- Factor
+  factorP :: ParserT Expr
+  factorP = literalExprP
+    +++ storeExprP
+    +++ funCallExprP
+    +++ monadicExprP
+    +++ nestedExprP
+    +++ typeConvExprP
 
   typeConvExprP :: ParserT Expr
   typeConvExprP =
@@ -376,44 +285,6 @@ module Parser where
       (RATIOOPR, Just (ROprAttrib opr), _) <- tokenP RATIOOPR
       expr <- exprP
       return (MonadicExpr opr expr)
-
-  dyadicExprP :: ParserT Expr
-  dyadicExprP = addOprExprP
-            +++ multOprExprP
-            +++ relExprP
-            +++ boolExprP
-
-  multOprExprP :: ParserT Expr
-  multOprExprP =
-    do
-      lExpr <- factorExprP
-      (MULTOPR, Just (MultOprAttrib opr), _) <- tokenP MULTOPR
-      rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr)
-
-  addOprExprP :: ParserT Expr
-  addOprExprP =
-    do
-      lExpr <- factorExprP
-      (ADDOPR, Just (AddOprAttrib opr), _) <- tokenP ADDOPR
-      rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr)
-
-  relExprP :: ParserT Expr
-  relExprP =
-    do
-      lExpr <- factorExprP
-      (RELOPR, Just (RelOprAttrib opr), _) <- tokenP RELOPR
-      rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr)
-
-  boolExprP :: ParserT Expr
-  boolExprP =
-    do
-      lExpr <- factorExprP
-      (BOOLOPR, Just (BOprAttrib opr), _) <- tokenP BOOLOPR
-      rExpr <- exprP
-      return (DyadicExpr opr lExpr rExpr)
 
   exprListP :: ParserT [Expr]
   exprListP =
