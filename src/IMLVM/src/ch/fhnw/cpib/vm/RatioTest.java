@@ -5,7 +5,7 @@ public class RatioTest {
 	public static void main(String[] args) {
 		
 		
-		Ratio r = new Ratio(1, 280);
+		Ratio r = new Ratio(2, 3);
 		
 		System.out.println(r.toString());
 		

@@ -1,5 +1,8 @@
 package ch.fhnw.cpib.vm;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
+
 public class Ratio {
 	private int numerator;
 	private int denominator;
@@ -18,11 +21,15 @@ public class Ratio {
 	}
 
 	public String toString() {
-		if (this.isPeriodic()){
-		return this.getInteger() + "." + this.decimalpoints() /*+ "(" + this.periodicpoints() + ")"+*/;
-		}
-		else{
-		return this.getRatioFormat() +"";
+		
+		Ratio check = this.getCanceled();
+		
+		if (check.numerator%check.denominator == 0){
+		 return check.getInteger() + ".0";	
+		} else if (check.isPeriodic()){
+		return check.getInteger() + "." + check.decimalpoints();
+		 }else {
+		return check.getRatioFormat() +"";
 		}
 		
 	}
@@ -36,13 +43,23 @@ public class Ratio {
 	public boolean isPeriodic (){
 		Ratio check = this.getCanceled();
 		int period = check.denominator;
-		while (period%2 == 0){
+		
+		while ((period%2 == 0) && (period > 2)){
 			period = period/2;
+			//System.out.println(period);
 		}
-		while (period%5 == 0){
-			period = period/5;			
+		
+		while ((period%5 == 0) && (period > 5)){
+			period = period/5;
+			//System.out.println(period);
 		}
-		return (!(period == 0));
+		
+		if (period%2 == 0 || period%5 == 0)
+			return false;
+		//System.out.println(period);
+		return (period != 0);
+		
+		
 	}
 	
     public double getRatioFormat(){		
@@ -55,14 +72,12 @@ public class Ratio {
 		return n;
 	}
 	
-	// Returns the not Periodic Part of the Floating Point Number
 	public String decimalpoints(){
 		int count2 = 0;
 		int count5 = 0;
 		int denom;
 		int num;
 		
-		//I think only Jack Bauer knows what im doing here, and me... so I'm as good as Jack ;-)
 		
 		int RatioIsBiggerThanOne = (int)(this.getRatioFormat());
 		
@@ -88,56 +103,110 @@ public class Ratio {
 		int basis;
 		int exponent = (int)(Math.abs(count2-count5));
 		
+		//System.out.println(count2);
+		//System.out.println(count5);
+		
 		if (count2 > count5){
 			basis = 5;
 		} else {
 			basis = 2;
 		}
 		int extd = (int)(Math.pow(basis, exponent));
-	//	System.out.println("Basis: " + basis);
-	//	System.out.println("Exponent: " + exponent);
-	//	System.out.println("#2: " + count2);
-	//	System.out.println("#5: " + count5);
-	//	System.out.println("Erweiterung: " + extd);
 				
 		int nnum = extd*num;
 		int ndenom = extd*(this.denominator);
-	//	System.out.println("Bruch: " + nnum + "/" + ndenom);
 		
 		int count10 = 0;
 		
 		while (ndenom%10 == 0){
 			ndenom = ndenom/10;
-			count10++;			
+			count10++;
 		}
-	//	System.out.println("#0: " + count10);
 				
 		int decimalnum = nnum/ndenom;
 		int decimaldenom = (int)Math.pow(10, count10);
 		
-	//	System.out.println("Dezimalteilbruch: " + decimalnum + "/" + decimaldenom);
+		//System.out.println(count10);
+		
 		
 		Ratio decimal = new Ratio(decimalnum, decimaldenom);
 		
-		String str = decimal.getRatioFormat()+"";
+		//System.out.println("Bruch dezimal: " + decimalnum + "/" + decimaldenom);
 		
-	//	System.out.println(str);
-				
+		String str = decimal.getRatioFormat() +"";
 		str = (str.replaceFirst("0", "")).replace(".", "");
 		
-		if (str.matches("0"))
-			str = "Jack";
+		int periodicnum = nnum%ndenom;
+		int periodicdenom = (int)(ndenom*(Math.pow(10, count10)));
 				
-	//	System.out.println(str);
+		int pnum = periodicnum;
+	    int pdenom = periodicdenom/decimaldenom;
+	    
+	    int plenghth = 0;
+	    int counter = 0;
+	    pnum=10;
+	     
+	    
+	    while (plenghth != 1){
+	    	plenghth = (pnum%pdenom);
+	    	pnum = plenghth*10;
+	    	counter++;
+	    }
+	    
+	    pnum = periodicnum;
+	    int[] numbers = new int[counter+1]; 
+	    
+	    int anum= 0;
+	    int cnt = 0;
+	    int tmp = 0;
+	    int rest = 0;
+	    
+	    for (int i = 0; i < numbers.length; i++) {
+			
 		
-		return str;
-		
+	    	anum = pnum/pdenom;
+	    	
+	    	numbers[cnt] = anum;
+	        cnt++;
+	    	tmp = anum*pdenom;
+	    	
+	    	rest = (pnum-tmp);
+	    	
+	    	pnum = (rest*10);
+	    	
+	    	}
+	    
+	    StringBuffer strBuf = new StringBuffer();
+	    for (int i = 1; i < numbers.length; i++) {
+	    	 strBuf.append(numbers[i]);
+		}
+	    
+	    String finalString = strBuf.toString();
+	    
+	    
+	    int decimaln = (count10);
+	    int decimals[] = new int[decimaln];
+	    for (int i = 0; i < decimals.length; i++) {
+			decimals[i]=0;
+		}
+	    StringBuffer strBuf1 = new StringBuffer();
+	    for (int i = 0; i < decimals.length; i++) {
+	    	 strBuf1.append(decimals[i]);
+		}
+	    
+	    if ((decimalnum == 0) && str.equals("0")){
+	    str = strBuf1.toString();
+	    //System.out.println(str);
+	    	return str +  "(" + finalString + ")";
+	    }else if (str.equals("0")){
+	    	return "(" + finalString + ")";
+	    } else {
+	    	return str +  "(" + finalString + ")";
+	    }
+	    
+	    
 	}
-	
-
-	
-	
-	// End of Helping Stuff
+	        
 
 	public Ratio getCanceled() {
 		int gcd = getGcd(this.numerator, this.denominator);
