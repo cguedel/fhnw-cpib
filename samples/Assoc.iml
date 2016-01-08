@@ -1,10 +1,6 @@
 program Assoc
-  global
-    x:int
   do
-    if not (false &? true) then
-      skip
-    else
-      skip
-    endif
+
+    //debugout 5 * 5 + 1
+    debugout 1 - 2 - 3
 endprogram

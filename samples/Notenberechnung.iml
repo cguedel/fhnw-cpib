@@ -1,36 +1,17 @@
 program notenberechnung
 global
-	//const pkt:int;
+	const pkt:int;
 	const max:int;
-	const pkt:int
 
-	//fun calculate(copy const pkt:int, copy const max:int) returns grade:ratio
-	//do
-	//	grade := (((pkt * 5) divE max) + 1);
-	//	grade := (round ((grade * 10) divE 10))
-	//endfun
+	fun calculate(copy const pkt:int, copy const max:int) returns grade:ratio
+	do
+		grade := (((asRatio pkt * 5) divE max) + 1);
+		grade := (asRatio (round (grade * 10))) divE 10
+	endfun
 
 do
-	//debugin pkt;
-	//debugin max;
+	debugin pkt;
+	debugin max;
 
-	pkt := 37;
-	max := 51;
-
-	//debugout calculate(pkt, max)
-	//grade := pkt * 5;
-	//grade := grade divE max;
-	//grade := grade + 1;
-	//grade := grade * 10;
-	//grade := round grade;
-	//grade := grade divE 10;
-
-	//debugout grade;
-
-	//grade := ((pkt * 5) divE max) + 1;
-	//debugout grade
-
-	debugout (asRatio (round ((((asRatio pkt * 5) divE max) + 1) * 10))) divE 10
-
-	//debugout (asRatio (pkt * 5)) divE max
+	debugout calculate(pkt, max)
 endprogram
