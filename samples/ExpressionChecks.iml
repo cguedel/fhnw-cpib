@@ -10,5 +10,12 @@ do
   debugout 2 >= 2;
   debugout 1 + 1 * 10 = 11;
   debugout 1 * 10 + 1 = 11;
-  debugout 2 >= 2 &? 1 > 0
+  debugout 2 >= 2 &? 1 > 0;
+  debugout (denom 1/3) = 3;
+  debugout (num 3/4) = 3;
+  debugout (round 1/2) = 1;
+  debugout (floor 1/2) = 0;
+  debugout (ceil 1/3) = 1;
+  debugout 1/3 > 1/4;
+  debugout (1/3 > 1/4) = (not (1/4 > 1/3))
 endprogram
