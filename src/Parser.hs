@@ -190,8 +190,8 @@ module Parser where
   -- Factor
   factorP :: ParserT Expr
   factorP = literalExprP
-    +++ storeExprP
     +++ funCallExprP
+    +++ storeExprP
     +++ monadicExprP
     +++ nestedExprP
     +++ typeConvExprP

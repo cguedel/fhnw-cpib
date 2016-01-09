@@ -142,7 +142,7 @@ module CodeGenerator (genCode) where
       variable = ctxGetLocalVar ctx routine ident
       addr = ctxGetVarAddr variable
       declInstr = genLocalVarDecl variable
-      loadInstr = [Store, Deref, LoadAddrRel (addr * (-1) - 1), LoadAddrRel (addr + 3)]
+      loadInstr = [Store, Deref, Deref, LoadAddrRel (addr * (-1) - 1), LoadAddrRel (addr + 3)]
       in
         loadInstr ++ declInstr
 
@@ -286,7 +286,7 @@ module CodeGenerator (genCode) where
         code
 
   -- Type conversion to ratio is handled internally in the VM
-  genRExpr (ctx, routine) (TypeConvRExpr expr, _) = genLOrRExprInstr (ctx, routine) expr
+  genRExpr (ctx, routine) (TypeConvRExpr expr, _) = genRExpr (ctx, routine) expr
 
   genLiteralLoad :: Type -> Value -> Instr
   genLiteralLoad RatioType (RatioVal (num, denom)) = LoadImRatio num denom
