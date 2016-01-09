@@ -20,13 +20,34 @@ public class Ratio {
 	public String toString() {
 
 		Ratio check = this.getCanceled();
+		boolean negnum = false;
+		boolean negdenom = false;
+		
+		if (check.numerator < 0 && check.denominator < 0){
+			check = new Ratio (check.numerator*-1,check.denominator*-1);
+		} else if (check.numerator < 0){
+			check = new Ratio (check.numerator*-1,check.denominator);
+			negnum = true;
+		} else if (check.denominator < 0){
+			check = new Ratio (check.numerator,check.denominator*-1);
+			negdenom = true;
+		}
 
 		if (check.numerator % check.denominator == 0) {
-			return check.getInteger() + ".0";
+			if (negdenom || negnum)
+				return "-" + check.getInteger() + ".0";
+			else
+				return check.getInteger() + ".0";
 		} else if (check.isPeriodic()) {
-			return check.getInteger() + "." + check.decimalpoints();
+			if (negdenom || negnum)
+				return "-" + check.getInteger() + "." + check.decimalpoints();
+			else
+				return check.getInteger() + "." + check.decimalpoints();
 		} else {
-			return check.getRatioFormat() + "";
+			if (negdenom || negnum)
+				return "-" + check.getRatioFormat() + "";
+			else
+				return check.getRatioFormat() + "";
 		}
 	}
 
@@ -128,7 +149,6 @@ public class Ratio {
 			plenghth = (pnum % pdenom);
 			pnum = plenghth * 10;
 			counter++;
-			System.out.println(counter);
 		}
 
 		pnum = periodicnum;

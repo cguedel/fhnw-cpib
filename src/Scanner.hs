@@ -41,7 +41,7 @@ module Scanner(tokenize) where
   s0 ('('       : cs, l, accu) = s0 (cs, l, (LPAREN, Nothing, (l, 0)) : accu)
   s0 (')'       : cs, l, accu) = s0 (cs, l, (RPAREN, Nothing, (l, 0)) : accu)
 
-  -- Line breaks
+  -- Comment
   s0 ('/'  : '/'  : cs, l, accu) = s0 (dropWhile (not . isLineBreak) cs, l, accu)
 
   -- Catch All
