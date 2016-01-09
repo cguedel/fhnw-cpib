@@ -52,13 +52,6 @@ module CodeGenerator (genCode) where
       in
         a
 
-  ctxGetRoutineVarCount :: Context -> Ident -> Int
-  ctxGetRoutineVarCount ctx routine =
-    let
-      Routine { routVars = v } = ctxGetRoutine ctx routine
-      in
-        length (M.elems v)
-
   -- Declarations
   genCpsDecl :: (Context, Maybe Ident) -> [TypedDecl] -> (Context, Maybe Ident, [Instr])
   genCpsDecl (ctx, ident) [] = (ctx, ident, [])
@@ -93,7 +86,6 @@ module CodeGenerator (genCode) where
       routCtx' = ctxIncrLoc ctx'' paramsInstr
       (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
       (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
-      --numLocalVars = ctxGetRoutineVarCount ctx ident - length params
       routInstr = Return 0 : bodyInstr ++ localsInstr ++ paramsInstr
       routLength = length routInstr
       jump = UncondJump (addr + routLength)
@@ -111,8 +103,7 @@ module CodeGenerator (genCode) where
       routCtx' = ctxIncrLoc routCtx paramsInstr
       (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
       (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
-      --numLocalVars = ctxGetRoutineVarCount ctx ident - length params
-      routInstr = Return 0 : Store: Deref : LoadAddrRel 3 : LoadAddrRel (length params * (-1) - 1) : bodyInstr ++ localsInstr ++ paramsInstr ++ returnInstr
+      routInstr = Return 0 : Store: Deref : LoadAddrRel (3 + length params) : LoadAddrRel (-1) : bodyInstr ++ localsInstr ++ paramsInstr ++ returnInstr
       routLength = length routInstr
       jump = UncondJump (addr + routLength)
       allInstr = routInstr
@@ -142,7 +133,7 @@ module CodeGenerator (genCode) where
       variable = ctxGetLocalVar ctx routine ident
       addr = ctxGetVarAddr variable
       declInstr = genLocalVarDecl variable
-      loadInstr = [Store, Deref, Deref, LoadAddrRel (addr * (-1) - 1), LoadAddrRel (addr + 3)]
+      loadInstr = [Store, Deref, LoadAddrRel (-3 + addr), LoadAddrRel (addr + 3)]
       in
         loadInstr ++ declInstr
 
@@ -240,13 +231,10 @@ module CodeGenerator (genCode) where
         (instr ++ instrs)
 
   genParamLoad :: (Context, Maybe Ident) -> ActualParameter -> [Instr]
-  genParamLoad (ctx, ident) (_, expr) = genLOrRExprInstr (ctx, ident) expr
+  genParamLoad (ctx, ident) (_, Left expr) = Deref : genLExpr (ctx, ident) expr
+  genParamLoad (ctx, ident) (_, Right expr) = genRExpr (ctx, ident) expr
 
   -- Expressions
-  genLOrRExprInstr :: (Context, Maybe Ident) -> Either LExpr RExpr -> [Instr]
-  genLOrRExprInstr (ctx, ident) (Left lExpr) = genLExpr (ctx, ident) lExpr
-  genLOrRExprInstr (ctx, ident) (Right rExpr) = genRExpr (ctx, ident) rExpr
-
   genLExpr :: (Context, Maybe Ident) -> LExpr -> [Instr]
   genLExpr (ctx, routine) (StoreLExpr ident _ _, _) =
     let
@@ -280,8 +268,8 @@ module CodeGenerator (genCode) where
   genRExpr (ctx, routine) (FunCallRExpr (routineIdent, params), _) =
     let
       routineAddr = ctxGetRoutineAddr ctx routineIdent
-      paramInstr = genParamsLoad (ctx, routine) params
-      code = Call routineAddr : paramInstr ++ [AllocBlock 1]
+      paramInstr = genParamsLoad (ctx, routine) (reverse params)
+      code = Call routineAddr : AllocBlock 1 : paramInstr -- ++ [AllocBlock 1]
       in
         code
 

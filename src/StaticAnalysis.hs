@@ -99,7 +99,11 @@ module StaticAnalysis where
   ctxAddRoutineVariable Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } rout (ident, t, cm) =
     let
       Routine { routAddr = a, routType = rt, routParams = p, routVars = rv } = r M.! rout
-      variable = Variable { varAddr = length rv, varType = t, varChangeMode = cm }
+      variable =
+        if M.member ident v || M.member ident rv then
+          error $ "Duplicate variable name " ++ show ident
+        else
+          Variable { varAddr = length rv, varType = t, varChangeMode = cm }
       routine' = Routine { routAddr = a, routType = rt, routParams = p, routVars = M.insert ident variable rv }
       in
         Context { ctxLoc = l, ctxRoutines = M.insert rout routine' r, ctxVars = v }
