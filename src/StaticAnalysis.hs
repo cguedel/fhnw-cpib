@@ -359,11 +359,38 @@ module StaticAnalysis where
 
   -- RoutineCalls
   analyzeRoutineCall :: RoutineCall -> (Context, Maybe Ident) -> ActualRoutineCall
-  analyzeRoutineCall (ident, params) ctx =
+  analyzeRoutineCall (ident, params) (ctx, routine) =
     let
-      params' = analyzeRcExprs params ctx
+      Routine { routParams = p } = ctxGetRoutine ctx ident
+      params' = analyzeRcExprs params (ctx, routine)
+      (Just params'') = analyzeRcParams p params'
       in
-        (ident, params')
+        (ident, params'')
+
+  analyzeRcParams :: [Param] -> [ActualParameter] -> Maybe [ActualParameter]
+  analyzeRcParams [] [] = Just []
+  analyzeRcParams (p : ps) (r : rs) =
+    let
+      (Just actual) = analyzeRcParam p r
+      (Just actuals) = analyzeRcParams ps rs
+      in
+        Just (actual : actuals)
+  analyzeRcParams _ _ = error "Parameter count mismatch"
+
+  analyzeRcParam :: Param -> ActualParameter -> Maybe ActualParameter
+  analyzeRcParam routParam (mm, actualParamExpr) =
+    let
+      exprType = getLOrRExprType actualParamExpr
+      Param { parType = paramType } = routParam
+      in
+        if exprType == paramType then
+          Just (mm, actualParamExpr)
+        else
+          error "Parameter type mismatch"
+
+  getLOrRExprType :: Either LExpr RExpr -> Type
+  getLOrRExprType (Left (_, t)) = t
+  getLOrRExprType (Right (_, t)) = t
 
   analyzeRcExprs :: [Expr] -> (Context, Maybe Ident) -> [ActualParameter]
   analyzeRcExprs [] _ = []
