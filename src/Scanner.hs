@@ -93,7 +93,7 @@ module Scanner(tokenize) where
       "copy"        -> (MECHMODE,   Just (MechModeAttrib COPY), p)
       "debugin"     -> (DEBUGIN,    Nothing, p)
       "debugout"    -> (DEBUGOUT,   Nothing, p)
-      "denum"       -> (RATIOOPR,   Just (ROprAttrib Denom), p)
+      "denom"       -> (RATIOOPR,   Just (ROprAttrib Denom), p)
       "divE"        -> (MULTOPR,    Just (MultOprAttrib Div), p)
       "do"          -> (DO,         Nothing, p)
       "else"        -> (ELSE,       Nothing, p)
