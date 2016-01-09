@@ -62,9 +62,12 @@ class InputUtility {
 				throw new ExecutionError(
 						"Numerator or denominator not an integer.");
 			}
+		} else {
+			try {
+				return new Ratio(Integer.parseInt(s), 1);
+			} catch (NumberFormatException e) {
+				throw new ExecutionError("Invalid format");
+			}
 		}
-
-		throw new ExecutionError(
-				"Invalid input format, expected <numerator>/<denominator>");
 	}
 }
