@@ -292,6 +292,7 @@ module CodeGenerator (genCode) where
   genMonadicOp _ Floor = FloorRatio
   genMonadicOp _ Ceil = CeilRatio
   genMonadicOp IntType Minus = NegInt
+  genMonadicOp RatioType Minus = NegRatio
   genMonadicOp BoolType Not = NegBool
   genMonadicOp t op = error $ "Illegal monadic operator " ++ show op ++ " for type " ++ show t
 

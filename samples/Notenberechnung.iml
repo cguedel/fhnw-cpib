@@ -16,7 +16,7 @@ global
 do
 	debugin pkt;
 	debugin max;
-
+	
 	debugout calculateUnrounded(pkt, max);
 	debugout calculate(pkt, max)
 endprogram

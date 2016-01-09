@@ -386,7 +386,7 @@ module StaticAnalysis where
         if exprType == paramType || (exprType == IntType && paramType == RatioType) then
           Just (mm, actualParamExpr)
         else
-          error $ "Parameter type mismatch"
+          error "Parameter type mismatch"
 
   getLOrRExprType :: Either LExpr RExpr -> Type
   getLOrRExprType (Left (_, t)) = t
@@ -410,6 +410,7 @@ module StaticAnalysis where
     | op `elem` [Denom, Num, Floor, Ceil, Round] && t == RatioType = IntType
     | op == Not && t == BoolType = BoolType
     | op `elem` [Plus, Minus] && t == IntType = IntType
+    | op `elem` [Plus, Minus] && t == RatioType = RatioType
     | otherwise = error $ "Operator " ++ show op ++ " not type compatible with type " ++ show t
 
   getDyadicOpType :: Operator -> Type -> Type -> Type
