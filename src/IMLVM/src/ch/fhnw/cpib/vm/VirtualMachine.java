@@ -77,7 +77,7 @@ public class VirtualMachine implements IVirtualMachine {
         	//System.out.println(code[pc]);
         	//System.out.println("sp = " + sp);
         	IExecInstr instr = code[pc];
-        	System.out.println(instr);
+        	//System.out.println(instr);
             instr.execute();
         }
         } catch (Exception e)

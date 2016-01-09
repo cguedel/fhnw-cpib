@@ -1,14 +1,14 @@
 program ExpressionChecks
 do
   // all outputs must return true
-  debugout (not false) = true;
-  debugout (not true) = false;
-  debugout (((round ((((25 * 5) divE 50) + 1) * 10)) divE 10)) = 7/2;
-  debugout (1 divE 2) = 1/2;
-  debugout (1/3 divE 1/4) = 4/3;
-  debugout (1/3 > 1/4) /= (1/3 < 1/4);
-  debugout ((1/100 + 3) >= 301/100);
-  debugout ((denum 1/2) + (denum 1/2)) = 4;
-  debugout (1/2 + 1/2) = 1;
-  debugout (((denum 1/2) + (denum 1/2)) > 3)
+  debugout true;
+  debugout not false;
+  debugout 1 < 2;
+  debugout 2 <= 2;
+  debugout 1 = 1;
+  debugout 2 > 1;
+  debugout 2 >= 2;
+  debugout 1 + 1 * 10 = 11;
+  debugout 1 * 10 + 1 = 11;
+  debugout 2 >= 2 &? 1 > 0
 endprogram

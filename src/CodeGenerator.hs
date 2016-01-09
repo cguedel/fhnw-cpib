@@ -264,7 +264,7 @@ module CodeGenerator (genCode) where
   genRExpr (ctx, routine) (MonadicRExpr operator rExpr, t) =
     let
       rExprInstr = genRExpr (ctx, routine) rExpr
-      operatorInstr = genOp t operator
+      operatorInstr = genMonadicOp t operator
       code = operatorInstr : rExprInstr
       in
         code
@@ -297,12 +297,17 @@ module CodeGenerator (genCode) where
   getRExprType :: RExpr -> Type
   getRExprType (_, t) = t
 
+  genMonadicOp :: Type -> Operator -> Instr
+  genMonadicOp _ Num = NumRatio
+  genMonadicOp _ Denom = DenomRatio
+  genMonadicOp _ Round = RoundRatio
+  genMonadicOp _ Floor = FloorRatio
+  genMonadicOp _ Ceil = CeilRatio
+  genMonadicOp IntType Minus = NegInt
+  genMonadicOp BoolType Not = NegBool
+  genMonadicOp t op = error $ "Illegal monadic operator " ++ show op ++ " for type " ++ show t
+
   genOp :: Type -> Operator -> Instr
-  genOp _ Num = NumRatio
-  genOp _ Denom = DenomRatio
-  genOp _ Round = RoundRatio
-  genOp _ Floor = FloorRatio
-  genOp _ Ceil = CeilRatio
   genOp RatioType Less = LtRatio
   genOp RatioType LessEq = LeRatio
   genOp RatioType Equal = EqRatio
@@ -326,7 +331,4 @@ module CodeGenerator (genCode) where
   genOp _ Div = DivTruncInt
   genOp BoolType CAnd = MultInt
   genOp BoolType Cor = AddInt
-  genOp BoolType Not = NegBool
-  genOp RatioType op = error $ "Illegal operator for RatioType: " ++ show op
-  genOp IntType op = error $ "Illegal operator for IntType: " ++ show op
-  genOp BoolType op = error $ "Illegal operator for BoolType: " ++ show op
+  genOp t op = error $ "Illegal operator " ++ show op ++ " for type " ++ show t
