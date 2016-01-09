@@ -5,12 +5,18 @@ global
 			grade := (round (inppkt * 5/1 divE inpmax + 1) * 10) divE (asRatio 10)
 	endfun;
 
-	pkt:ratio;
-	max:ratio
+	fun calculateUnrounded(inppkt:int,inpmax:int) returns grade:ratio
+		do
+			grade := ((inppkt * 5/1 divE inpmax + 1) * 10) divE (asRatio 10)
+	endfun;
+
+	pkt:int;
+	max:int
 
 do
 	debugin pkt;
 	debugin max;
 
+	debugout calculateUnrounded(pkt, max);
 	debugout calculate(pkt, max)
 endprogram

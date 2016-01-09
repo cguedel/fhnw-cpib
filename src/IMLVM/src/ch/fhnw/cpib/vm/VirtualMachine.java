@@ -74,11 +74,8 @@ public class VirtualMachine implements IVirtualMachine {
         try {
         while (pc > -1)
         {
-        	//System.out.println(code[pc]);
-        	//System.out.println("sp = " + sp);
         	IExecInstr instr = code[pc];
-        	//System.out.println(instr);
-            instr.execute();
+        	instr.execute();
         }
         } catch (Exception e)
         {
@@ -162,7 +159,7 @@ public class VirtualMachine implements IVirtualMachine {
         public CallExec(int routAddress) { super(routAddress); }
 
         public void execute() throws ExecutionError
-        {
+        {	
             // remove following check if use ep
             if (sp + 2 > hp) { throw new ExecutionError(SP_OVER_HP); }
             store[sp]= Data.intNew(fp);

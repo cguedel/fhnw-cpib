@@ -383,10 +383,10 @@ module StaticAnalysis where
       exprType = getLOrRExprType actualParamExpr
       Param { parType = paramType } = routParam
       in
-        if exprType == paramType then
+        if exprType == paramType || (exprType == IntType && paramType == RatioType) then
           Just (mm, actualParamExpr)
         else
-          error "Parameter type mismatch"
+          error $ "Parameter type mismatch"
 
   getLOrRExprType :: Either LExpr RExpr -> Type
   getLOrRExprType (Left (_, t)) = t
