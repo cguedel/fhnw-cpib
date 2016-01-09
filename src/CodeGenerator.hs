@@ -306,7 +306,7 @@ module CodeGenerator (genCode) where
   genOp RatioType Plus = AddRatio
   genOp RatioType Minus = SubRatio
   genOp RatioType Times = MultRatio
-  genOp RatioType Div = DivTruncRatio
+  genOp RatioType Div = DivRatio
   genOp _ Less = LtInt
   genOp _ LessEq = LeInt
   genOp _ Equal = EqInt

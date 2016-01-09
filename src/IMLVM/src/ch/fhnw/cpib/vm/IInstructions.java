@@ -229,10 +229,10 @@ public interface IInstructions {
         }
     }
     
-    class DivTruncRatio implements IInstr {
-        public String toString() { return "DivTruncRatio"; }
+    class DivRatio implements IInstr {
+        public String toString() { return "DivRatio"; }
         public IExecInstr toExecInstr(VirtualMachine vm) {
-            return vm.new DivTruncRatioExec();
+            return vm.new DivRatioExec();
         }
     }
 

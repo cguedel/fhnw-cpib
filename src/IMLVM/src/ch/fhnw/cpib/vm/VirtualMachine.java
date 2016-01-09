@@ -375,7 +375,7 @@ public class VirtualMachine implements IVirtualMachine {
         }
     }
     
-    public class DivTruncRatioExec extends DivTruncRatio implements IExecInstr {
+    public class DivRatioExec extends DivRatio implements IExecInstr {
         public void execute() throws ExecutionError
         {
             sp= sp - 1;

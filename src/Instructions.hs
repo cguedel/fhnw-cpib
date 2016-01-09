@@ -13,7 +13,7 @@ module Instructions where
     | DenomRatio
     | Deref
     | DivTruncInt
-    | DivTruncRatio
+    | DivRatio
     | Dup
     | EqInt
     | EqRatio
@@ -63,7 +63,7 @@ module Instructions where
     show DenomRatio = "DenomRatio"
     show Deref = "Deref"
     show DivTruncInt = "DivTruncInt"
-    show DivTruncRatio = "DivTruncRatio"
+    show DivRatio = "DivRatio"
     show Dup = "Dup"
     show EqInt = "EqInt"
     show EqRatio = "EqRatio"

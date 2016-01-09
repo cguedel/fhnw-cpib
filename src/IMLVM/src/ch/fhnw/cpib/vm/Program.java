@@ -84,8 +84,8 @@ public class Program {
 			return new IInstructions.Deref();
 		case "DivTruncInt":
 			return new IInstructions.DivTruncInt();
-		case "DivTruncRatio":
-			return new IInstructions.DivTruncRatio();
+		case "DivRatio":
+			return new IInstructions.DivRatio();
 		case "Dup":
 			return new IInstructions.Dup();
 		case "EqInt":
