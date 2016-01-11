@@ -1,4 +1,9 @@
 program ExpressionChecks
+global
+  fun incr (i:int) returns y:int
+  do
+    y := i + 1
+  endfun
 do
   // all outputs must return true
   debugout true;
@@ -17,5 +22,12 @@ do
   debugout (floor 1/2) = 0;
   debugout (ceil 1/3) = 1;
   debugout 1/3 > 1/4;
-  debugout (1/3 > 1/4) = (not (1/4 > 1/3))
+  debugout (1/3 > 1/4) = (not (1/4 > 1/3));
+  debugout incr(10) = 11;
+
+  if incr(11) = 12 then
+    debugout true
+  else
+    skip
+  endif
 endprogram

@@ -1,7 +1,5 @@
 module Instructions where
 
-  type CommentedInstr = (Instr, Maybe String)
-
   data Instr
     = AddInt
     | AddRatio

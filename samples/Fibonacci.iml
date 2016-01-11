@@ -1,0 +1,17 @@
+program Assoc
+global
+  n:int;
+
+  fun fib (x:int) returns f:int
+  do
+    if x < 2 then
+      f := x
+    else
+      f := fib(x - 1) + fib(x - 2)
+    endif
+  endfun
+
+do
+  debugin n;
+  debugout fib(n)
+endprogram

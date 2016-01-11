@@ -1,8 +1,0 @@
-program Assoc
-  do
-
-    //debugout 5 * 5 + 1
-    //debugout true |? false
-    //debugout 378171781 divE asRatio 1177818189
-    debugout 378171781/1177818189
-endprogram

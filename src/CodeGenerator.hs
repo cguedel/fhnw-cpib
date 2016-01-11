@@ -5,285 +5,271 @@ module CodeGenerator (genCode) where
   import Instructions
   import AbstractSyntax
 
-  import qualified Data.Map as M
+  type ScopedContext = (Context, Maybe Ident)
 
   -- Exported functions
   genCode :: AnalyzedProgram -> (Context, [Instr])
   genCode (ctx, TypedCpsCmd cs, TypedCpsDecl ds) =
     let
-      (globalCtx, _, declInstr) = genCpsDecl (ctx, Nothing) ds
-      (ctx', _, cmdInstr) = genCpsCmd (globalCtx, Nothing) cs
+      (globalCtx, declInstr) = genCpsDecl (ctx, Nothing) ds
+      (globalCtx', cmdInstr) = genCpsCmd globalCtx cs
+      (finalCtx, _) = globalCtx'
       in
-        (ctx', reverse $ Stop : cmdInstr ++ declInstr)
+        (finalCtx, reverse $ Stop : cmdInstr ++ declInstr)
   genCode (_, _, _) = error "Internal error, expected TypedCpsCmd"
 
-  -- Context
-  ctxIncrLoc :: Context -> [Instr] -> Context
-  ctxIncrLoc ctx instr = ctxIncrLocBy ctx (length instr)
+  -- Context related functions
+  ctxGetLoc :: ScopedContext -> Int
+  ctxGetLoc (Context { ctxLoc = l }, _) = l
 
-  ctxIncrLocBy :: Context -> Int -> Context
-  ctxIncrLocBy Context { ctxLoc = l, ctxVars = v, ctxRoutines = r } i =
-    Context { ctxLoc = l + i, ctxVars = v, ctxRoutines = r }
+  ctxIncrLoc :: ScopedContext -> Int -> ScopedContext
+  ctxIncrLoc (Context { ctxLoc = l, ctxVars = v, ctxRoutines = r }, ident) i =
+    (Context { ctxLoc = l + i, ctxVars = v, ctxRoutines = r }, ident)
 
-  ctxGetLoc :: Context -> Int
-  ctxGetLoc Context { ctxLoc = l } = l
-
-  ctxGetLocalVar :: Context -> Ident -> Ident -> Variable
-  ctxGetLocalVar ctx routine ident
-    | M.member ident rv = rv M.! ident
-    | otherwise = error $ "Undefined local variable: " ++ ident
-    where
-      Routine { routVars = rv } = ctxGetRoutine ctx routine
-
-  ctxGetVarAddr :: Variable -> Int
-  ctxGetVarAddr Variable { varAddr = a } = a
-
-  ctxSetRoutineAddr :: Context -> Ident -> Int -> Context
-  ctxSetRoutineAddr ctx routine addr =
+  ctxSetRoutAddr :: ScopedContext -> Ident -> Int -> ScopedContext
+  ctxSetRoutAddr (ctx, ident) routIdent i =
     let
-      Routine { routVars = v, routType = t, routParams = p } = ctxGetRoutine ctx routine
+      Routine { routVars = rv, routType = t, routParams = p } = ctxGetRoutine ctx routIdent
+      routine' = Routine { routAddr = i, routType = t, routParams = p, routVars = rv }
+      ctx' = ctxSetRoutine ctx routIdent routine'
       in
-        ctxSetRoutine ctx routine Routine { routVars = v, routType = t, routParams = p, routAddr = addr }
+        (ctx', ident)
 
-  ctxGetRoutineAddr :: Context -> Ident -> Int
-  ctxGetRoutineAddr ctx routine =
+  ctxGetRoutAddr :: ScopedContext -> Ident -> Int
+  ctxGetRoutAddr (ctx, _) routIdent =
     let
-      Routine { routAddr = a } = ctxGetRoutine ctx routine
+      Routine { routAddr = a } = ctxGetRoutine ctx routIdent
       in
         a
 
+  ctxGetVarAddr :: ScopedContext -> Ident -> (Int, Bool)
+  ctxGetVarAddr (ctx, ident) varIdent =
+    let
+      (Variable { varAddr = a }, isGlobal) = ctxGetVar ctx ident varIdent
+      in
+        (a, isGlobal)
+
   -- Declarations
-  genCpsDecl :: (Context, Maybe Ident) -> [TypedDecl] -> (Context, Maybe Ident, [Instr])
-  genCpsDecl (ctx, ident) [] = (ctx, ident, [])
-  genCpsDecl (ctx, ident) (d : ds) =
+  genCpsDecl :: ScopedContext -> [TypedDecl] -> (ScopedContext, [Instr])
+  genCpsDecl ctx [] = (ctx, [])
+  genCpsDecl ctx (d : ds) =
     let
-      (ctx', ident', instr') = genDecl (ctx, ident) d
-      (ctx'', ident'', instr'') = genCpsDecl (ctx', ident') ds
+      (ctx', instr) = genDecl ctx d
+      (ctx'', instr') = genCpsDecl ctx' ds
       in
-        (ctx'', ident'', instr'' ++ instr')
+        (ctx'', instr' ++ instr)
 
-  genDecl :: (Context, Maybe Ident) -> TypedDecl -> (Context, Maybe Ident, [Instr])
-  genDecl (ctx, Just routine) (TypedStoDecl ident) =
-    let
-      variable = ctxGetLocalVar ctx routine ident
-      instr = genLocalVarDecl variable
-      ctx' = ctxIncrLoc ctx instr
-      in
-        (ctx', Just routine, instr)
-  genDecl (ctx, Nothing) (TypedStoDecl ident) =
-    let
-      variable = ctxGetGlobalVar ctx ident
-      instr = genGlobalVarDecl variable
-      ctx' = ctxIncrLoc ctx instr
-      in
-        (ctx', Nothing, instr)
-  genDecl (ctx, Nothing) (TypedProcDecl ident params (TypedCpsDecl locals) (TypedCpsCmd body)) =
-    let
-      ctx' = ctxIncrLocBy ctx 1 -- Make room for the uncondjump to skip over the routine at program start
-      addr = ctxGetLoc ctx'
-      ctx'' = ctxSetRoutineAddr ctx' ident addr
-      paramsInstr = genParams (ctx'', ident) params
-      routCtx' = ctxIncrLoc ctx'' paramsInstr
-      (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
-      (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
-      routInstr = Return 0 : bodyInstr ++ localsInstr ++ paramsInstr
-      routLength = length routInstr
-      jump = UncondJump (addr + routLength)
-      allInstr = routInstr
-      finalCtx = ctxIncrLoc ctx'' allInstr
-      in
-        (finalCtx, Nothing, allInstr ++ [jump])
-  genDecl (ctx, Nothing) (TypedFunDecl ident params returns (TypedCpsDecl locals) (TypedCpsCmd body)) =
-    let
-      ctx' = ctxIncrLocBy ctx 1 -- Make room for the uncondjump to skip over the routine at program start
-      addr = ctxGetLoc ctx'
-      ctx'' = ctxSetRoutineAddr ctx' ident addr
-      (routCtx, _, returnInstr) = genDecl (ctx'', Just ident) returns
-      paramsInstr = genParams (routCtx, ident) params
-      routCtx' = ctxIncrLoc routCtx paramsInstr
-      (routCtx'', _, localsInstr) = genCpsDecl (routCtx', Just ident) locals
-      (_, _, bodyInstr) = genCpsCmd (routCtx'', Just ident) body
-      routInstr = Return 0 : Store: Deref : LoadAddrRel (3 + length params) : LoadAddrRel (-1) : bodyInstr ++ localsInstr ++ paramsInstr ++ returnInstr
-      routLength = length routInstr
-      jump = UncondJump (addr + routLength)
-      allInstr = routInstr
-      finalCtx = ctxIncrLoc ctx'' allInstr
-      in
-        (finalCtx, Nothing, allInstr ++ [jump])
-  genDecl _ _ = error "Internal error: Unknown declaration"
+  genDecl :: ScopedContext -> TypedDecl -> (ScopedContext, [Instr])
+  genDecl ctx (TypedProcDecl ident params (TypedCpsDecl locals) (TypedCpsCmd body)) =
+    genRoutine ctx (ident, params, Nothing, locals, body)
 
-  genLocalVarDecl :: Variable -> [Instr]
-  genLocalVarDecl Variable { varType = t, varAddr = a } = [Store, genTypeInit t, LoadAddrRel (a + 3), AllocBlock 1]
+  genDecl ctx (TypedFunDecl ident params returns (TypedCpsDecl locals) (TypedCpsCmd body)) =
+    genRoutine ctx (ident, params, Just returns, locals, body)
 
-  genGlobalVarDecl :: Variable -> [Instr]
-  genGlobalVarDecl Variable { varType = t, varAddr = a } = [Store, genTypeInit t, LoadImInt a, AllocBlock 1]
-
-  genParams :: (Context, Ident) -> [Param] -> [Instr]
-  genParams (_, _) [] = []
-  genParams (ctx, ident) (p : ps) =
+  genDecl ctx (TypedStoDecl ident) =
     let
-      i = genParam (ctx, ident) p
-      is = genParams (ctx, ident) ps
+      loadInstr = genVarInit ctx ident
       in
-        is ++ i
+        (ctxIncrLoc ctx (length loadInstr), loadInstr)
 
-  genParam :: (Context, Ident) -> Param -> [Instr]
-  genParam (ctx, routine) Param { parIdent = ident } =
+  genRoutine :: ScopedContext -> (Ident, [Param], Maybe TypedDecl, [TypedDecl], [TypedCommand]) -> (ScopedContext, [Instr])
+  genRoutine ctx (ident, params, returns, locals, body) =
     let
-      variable = ctxGetLocalVar ctx routine ident
-      addr = ctxGetVarAddr variable
-      declInstr = genLocalVarDecl variable
-      loadInstr = [Store, Deref, LoadAddrRel (-3 + addr), LoadAddrRel (addr + 3)]
+      ctx' = ctxIncrLoc ctx 1 -- Make room for the jump instruction that is not part of the routine
+      routineAddress = ctxGetLoc ctx'
+      (ctx'', _) = ctxSetRoutAddr ctx' ident routineAddress
+      alloc = genVarInits (ctx'', Just ident) $ map (\(TypedStoDecl i) -> i) locals
+      retInit = case returns of
+        Just (TypedStoDecl x) -> genVarInit (ctx'', Just ident) x
+        Nothing -> []
+        _ -> error "Internal error"
+      (ctx3, _) = ctxIncrLoc (ctx'', Nothing) (length alloc + length retInit)
+      (ctx4, body') = genCpsCmd (ctx3, Just ident) body
+      code = Return (length params) : body' ++ alloc ++ retInit
+      instrs = code ++ [UncondJump (routineAddress + length code)]
       in
-        loadInstr ++ declInstr
+        (ctxIncrLoc ctx4 1, instrs)
 
-  genTypeInit :: Type -> Instr
-  genTypeInit RatioType = LoadImRatio 0 1
-  genTypeInit _ = LoadImInt 0
+  genVarInits :: ScopedContext -> [Ident] -> [Instr]
+  genVarInits _ [] = []
+  genVarInits ctx (t : ts) =
+    let
+      i = genVarInit ctx t
+      is = genVarInits ctx ts
+      in
+        i ++ is
+
+  genVarInit :: ScopedContext -> Ident -> [Instr]
+  genVarInit ctx var =
+    let
+      t = ctxGetVariableType ctx var
+      load = genVariableLoad ctx var
+      initialize =
+        case t of
+          IntType -> LoadImInt 0
+          RatioType -> LoadImRatio 0 1
+          BoolType -> LoadImInt 0
+      in
+        [Store, initialize, load, AllocBlock 1]
 
   -- Commands
-  genCpsCmd :: (Context, Maybe Ident) -> [TypedCommand] -> (Context, Maybe Ident, [Instr])
-  genCpsCmd (ctx, ident) [] = (ctx, ident, [])
-  genCpsCmd (ctx, ident) (c : cs) =
+  genCpsCmd :: ScopedContext -> [TypedCommand] -> (ScopedContext, [Instr])
+  genCpsCmd ctx [] = (ctx, [])
+  genCpsCmd ctx (c : cs) =
     let
-      (ctx', ident', i) = genCmd (ctx, ident) c
-      (ctx'', ident'', is) = genCpsCmd (ctx', ident') cs
+      (ctx', instr) = genCmd ctx c
+      (ctx'', instr') = genCpsCmd ctx' cs
       in
-        (ctx'', ident'', is ++ i)
+        (ctx'', instr' ++ instr)
 
-  genCmd :: (Context, Maybe Ident) -> TypedCommand -> (Context, Maybe Ident, [Instr])
-  genCmd (ctx, ident) (TypedCpsCmd cs) = genCpsCmd (ctx, ident) cs
-  genCmd (ctx, ident) TypedSkipCmd = (ctx, ident, [])
-  genCmd (ctx, ident) (TypedDebugInCmd lExpr) =
+  genCmd :: ScopedContext -> TypedCommand -> (ScopedContext, [Instr])
+  genCmd ctx (TypedSkipCmd) = (ctx, [])
+  genCmd ctx (TypedCpsCmd cs) = genCpsCmd ctx cs
+  genCmd ctx (TypedDebugInCmd lExpr) =
     let
-      (_, t) = lExpr
-      exprInstr = genLExpr (ctx, ident) lExpr
-      code = genDebugInCmd "" t : exprInstr
-      ctx' = ctxIncrLoc ctx code
+      (ctx', exprInstr) = genLExpr ctx lExpr
+      cmd = genInputCmd $ getLExprType lExpr
+      code = cmd : exprInstr
       in
-        (ctx', ident, code)
-  genCmd (ctx, ident) (TypedDebugOutCmd rExpr) =
+        (ctxIncrLoc ctx' 1, code)
+  genCmd ctx (TypedDebugOutCmd rExpr) =
     let
-      (_, t) = rExpr
-      exprInstr = genRExpr (ctx, ident) rExpr
-      code = genDebugOutCmd "" t : exprInstr
-      ctx' = ctxIncrLoc ctx code
+      (ctx', exprInstr) = genRExpr ctx rExpr
+      cmd = genOutputCmd $ getRExprType rExpr
+      code = cmd : exprInstr
       in
-        (ctx', ident, code)
-  genCmd (ctx, ident) (TypedAssiCmd lExpr rExpr) =
+        (ctxIncrLoc ctx' 1, code)
+  genCmd ctx (TypedProcCallCmd routineCall) = genRoutineCall ctx routineCall
+  genCmd ctx (TypedAssiCmd lExpr rExpr) =
     let
-      lExprInstr = genLExpr (ctx, ident) lExpr
-      rExprInstr = genRExpr (ctx, ident) rExpr
-      code = Store : rExprInstr ++ lExprInstr
-      ctx' = ctxIncrLoc ctx code
+      (ctx', lExprInstr) = genLExpr ctx lExpr
+      (ctx'', rExprInstr) = genRExpr ctx' rExpr
+      cmd = Store
       in
-        (ctx', ident, code)
-  genCmd (ctx, ident) (TypedCondCmd cond cmd1 cmd2) =
-    let
-      condExprInstr = genRExpr (ctx, ident) cond
-      ctx' = ctxIncrLocBy ctx (length condExprInstr + 1)
-      (_, _, cmd1Instr) = genCmd (ctx', ident) cmd1
-      ctx'' = ctxIncrLocBy ctx' (length cmd1Instr + 1)
-      elseAddr = ctxGetLoc ctx''
-      (_, _, cmd2Instr) = genCmd (ctx'', ident) cmd2
-      endAddr = ctxGetLoc ctx'' + length cmd2Instr
-      code = cmd2Instr ++ [UncondJump endAddr] ++ cmd1Instr ++ [CondJump elseAddr] ++ condExprInstr
-      finalCtx = ctxIncrLoc ctx code
-      in
-        (finalCtx, ident, code)
-  genCmd (ctx, ident) (TypedWhileCmd cond body) =
+        (ctxIncrLoc ctx'' 1, cmd : rExprInstr ++ lExprInstr)
+  genCmd ctx (TypedWhileCmd expr (TypedCpsCmd body)) =
     let
       condAddr = ctxGetLoc ctx
-      condExprInstr = genRExpr (ctx, ident) cond
-      ctx' = ctxIncrLocBy ctx (length condExprInstr + 1)
-      (_, _, bodyInstr) = genCmd (ctx', ident) body
-      endAddr = ctxGetLoc ctx' + length bodyInstr + 1
-      code = [UncondJump condAddr] ++ bodyInstr ++ [CondJump endAddr] ++ condExprInstr
-      finalCtx = ctxIncrLoc ctx code
+      (ctx', exprInstr) = genRExpr ctx expr
+      ctx'' = ctxIncrLoc ctx' 1
+      (ctx''', body') = genCpsCmd ctx'' body
+      endAddr = ctxGetLoc ctx'''
+      code = UncondJump condAddr : body' ++ [CondJump (endAddr + 1)] ++ exprInstr
       in
-        (finalCtx, ident, code)
-  genCmd (ctx, ident) (TypedProcCallCmd (routineIdent, params)) =
+        (ctxIncrLoc ctx''' 1, code)
+  genCmd ctx (TypedCondCmd expr (TypedCpsCmd body1) (TypedCpsCmd body2)) =
     let
-      routineAddr = ctxGetRoutineAddr ctx routineIdent
-      paramInstr = genParamsLoad (ctx, ident) params
-      code = Call routineAddr : paramInstr
-      finalCtx = ctxIncrLoc ctx code
+      (ctx', condInstr) = genRExpr ctx expr
+      ctx'' = ctxIncrLoc ctx' 1 -- for the conditional jump
+      (ctx3, body1Instr) = genCpsCmd ctx'' body1
+      ctx4 = ctxIncrLoc ctx3 1 -- for the unconditional jump
+      elseAddr = ctxGetLoc ctx4
+      (ctx5, body2Instr) = genCpsCmd ctx4 body2
+      endAddr = ctxGetLoc ctx5
+      code = body2Instr ++ [UncondJump endAddr] ++ body1Instr ++ [CondJump elseAddr] ++ condInstr
       in
-        (finalCtx, ident, code)
+        (ctx5, code)
+  genCmd _ _ = error "Internal error, unknown command"
 
-  genDebugInCmd :: String -> Type -> Instr
-  genDebugInCmd s BoolType = InputBool s
-  genDebugInCmd s IntType = InputInt s
-  genDebugInCmd s RatioType = InputRatio s
+  genOutputCmd :: Type -> Instr
+  genOutputCmd RatioType = OutputRatio ""
+  genOutputCmd IntType = OutputInt ""
+  genOutputCmd BoolType = OutputBool ""
 
-  genDebugOutCmd :: String -> Type -> Instr
-  genDebugOutCmd s BoolType = OutputBool s
-  genDebugOutCmd s IntType = OutputInt s
-  genDebugOutCmd s RatioType = OutputRatio s
+  genInputCmd :: Type -> Instr
+  genInputCmd RatioType = InputRatio ""
+  genInputCmd IntType = InputInt ""
+  genInputCmd BoolType = InputBool ""
 
-  genParamsLoad :: (Context, Maybe Ident) -> [ActualParameter] -> [Instr]
-  genParamsLoad (_, _) [] = []
-  genParamsLoad (ctx, ident) (p : ps) =
+  -- Routine calls
+  genRoutineCall :: ScopedContext -> ActualRoutineCall -> (ScopedContext, [Instr])
+  genRoutineCall ctx (ident, params) =
     let
-      instr = genParamLoad (ctx, ident) p
-      instrs = genParamsLoad (ctx, ident) ps
+      routineAddress = ctxGetRoutAddr ctx ident
+      (ctx', paramsLoad) = genParamsLoad ctx $ reverse params
+      callInstr = Call routineAddress
       in
-        (instr ++ instrs)
+        (ctxIncrLoc ctx' 1, callInstr : paramsLoad)
 
-  genParamLoad :: (Context, Maybe Ident) -> ActualParameter -> [Instr]
-  genParamLoad (ctx, ident) (_, Left expr) = Deref : genLExpr (ctx, ident) expr
-  genParamLoad (ctx, ident) (_, Right expr) = genRExpr (ctx, ident) expr
-
-  -- Expressions
-  genLExpr :: (Context, Maybe Ident) -> LExpr -> [Instr]
-  genLExpr (ctx, routine) (StoreLExpr ident _ _, _) =
+  genParamsLoad :: ScopedContext -> [ActualParameter] -> (ScopedContext, [Instr])
+  genParamsLoad ctx [] = (ctx, [])
+  genParamsLoad ctx (p : ps) =
     let
-      (variable, isGlobal) = ctxGetVar ctx routine ident
-      addr = ctxGetVarAddr variable
+      (ctx', instr) = genParamLoad ctx p
+      (ctx'', instr') = genParamsLoad ctx' ps
+      in
+        (ctx'', instr' ++ instr)
+
+  genParamLoad :: ScopedContext -> ActualParameter -> (ScopedContext, [Instr])
+  genParamLoad ctx (_, Left lExpr) =
+    let
+      (ctx', loadInstr) = genLExpr ctx lExpr
+      in
+        (ctxIncrLoc ctx' 1, Deref : loadInstr)
+  genParamLoad ctx (_, Right rExpr) = genRExpr ctx rExpr
+
+  genVariableLoad :: ScopedContext -> Ident -> Instr
+  genVariableLoad ctx ident =
+    let (addr, isGlobal) = ctxGetVarAddr ctx ident
       in
         if isGlobal then
-          [LoadImInt addr]
+          LoadImInt addr
         else
-          [LoadAddrRel (addr + 3)]
+          LoadAddrRel addr
 
-  genRExpr :: (Context, Maybe Ident) -> RExpr -> [Instr]
-  genRExpr (ctx, routine) (DerefRExpr lExpr, _) = Deref : genLExpr (ctx, routine) lExpr
-  genRExpr _ (LiteralRExpr value, t) = [genLiteralLoad t value]
-  genRExpr (ctx, routine) (MonadicRExpr operator rExpr, t) =
+  -- Expressions
+  getRExprType :: RExpr -> Type
+  getRExprType (_, t) = t
+
+  getLExprType :: LExpr -> Type
+  getLExprType (_, t) = t
+
+  genLExpr :: ScopedContext -> LExpr -> (ScopedContext, [Instr])
+  genLExpr ctx (StoreLExpr ident _ _, _) =
     let
-      rExprInstr = genRExpr (ctx, routine) rExpr
+      code = [genVariableLoad ctx ident]
+      in
+        (ctxIncrLoc ctx 1, code)
+
+  genRExpr :: ScopedContext -> RExpr -> (ScopedContext, [Instr])
+  genRExpr ctx (DerefRExpr lExpr, _) =
+    let
+      (ctx', lExprInstr) = genLExpr ctx lExpr
+      in
+        (ctxIncrLoc ctx' 1, Deref : lExprInstr)
+  genRExpr ctx (LiteralRExpr val, _) =
+    let
+      load = genLiteralLoad val
+      in
+        (ctxIncrLoc ctx 1, [load])
+  genRExpr ctx (FunCallRExpr rc, _) =
+    let
+      ctx' = ctxIncrLoc ctx 1
+      (ctx'', rcInstr) = genRoutineCall ctx' rc
+      in
+        (ctx'', rcInstr ++ [AllocBlock 1])
+  genRExpr ctx (MonadicRExpr operator rExpr, t) =
+    let
+      (ctx', rExprInstr) = genRExpr ctx rExpr
       operatorInstr = genMonadicOp t operator
       code = operatorInstr : rExprInstr
       in
-        code
-  genRExpr (ctx, routine) (DyadicRExpr operator rExpr1 rExpr2, _) =
+        (ctxIncrLoc ctx' 1, code)
+  genRExpr ctx (DyadicRExpr operator rExpr1 rExpr2, _) =
     let
-      rExpr1Instr = genRExpr (ctx, routine) rExpr1
-      rExpr2Instr = genRExpr (ctx, routine) rExpr2
+      (ctx', rExpr1Instr) = genRExpr ctx rExpr1
+      (ctx'', rExpr2Instr) = genRExpr ctx' rExpr2
       t = getCompatibleType (getRExprType rExpr1) (getRExprType rExpr2)
       operatorInstr = genOp t operator
       code = operatorInstr : rExpr2Instr ++ rExpr1Instr
       in
-        code
-  genRExpr (ctx, routine) (FunCallRExpr (routineIdent, params), _) =
-    let
-      routineAddr = ctxGetRoutineAddr ctx routineIdent
-      paramInstr = genParamsLoad (ctx, routine) (reverse params)
-      code = Call routineAddr : AllocBlock 1 : paramInstr -- ++ [AllocBlock 1]
-      in
-        code
+        (ctxIncrLoc ctx'' 1, code)
+  genRExpr ctx (TypeConvRExpr expr, _) = genRExpr ctx expr
 
-  -- Type conversion to ratio is handled internally in the VM
-  genRExpr (ctx, routine) (TypeConvRExpr expr, _) = genRExpr (ctx, routine) expr
-
-  genLiteralLoad :: Type -> Value -> Instr
-  genLiteralLoad RatioType (RatioVal (num, denom)) = LoadImRatio num denom
-  genLiteralLoad IntType (IntVal int) = LoadImInt int
-  genLiteralLoad BoolType (BoolVal bool) = if bool then LoadImInt 1 else LoadImInt 0
-  genLiteralLoad _ _ = error "Type mismatch for literal load instruction"
-
-  getRExprType :: RExpr -> Type
-  getRExprType (_, t) = t
+  genLiteralLoad :: Value -> Instr
+  genLiteralLoad (RatioVal (num, denom)) = LoadImRatio num denom
+  genLiteralLoad (IntVal val) = LoadImInt val
+  genLiteralLoad (BoolVal val) = if val then LoadImInt 1 else LoadImInt 0
 
   genMonadicOp :: Type -> Operator -> Instr
   genMonadicOp _ Num = NumRatio

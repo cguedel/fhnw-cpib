@@ -95,18 +95,34 @@ module StaticAnalysis where
       in
         Context { ctxLoc = l, ctxRoutines = r, ctxVars = M.insert ident variable v }
 
-  ctxAddRoutineVariable :: Context -> Ident -> (String, Type, ChangeMode) -> Context
-  ctxAddRoutineVariable Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } rout (ident, t, cm) =
+  ctxAddRoutineVariable :: Context -> Ident -> (String, Type, ChangeMode, Bool, Bool) -> Context
+  ctxAddRoutineVariable Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } rout (ident, t, cm, isLocal, isReturns) =
     let
       Routine { routAddr = a, routType = rt, routParams = p, routVars = rv } = r M.! rout
       variable =
         if M.member ident v || M.member ident rv then
           error $ "Duplicate variable name " ++ show ident
         else
-          Variable { varAddr = length rv, varType = t, varChangeMode = cm }
+          Variable { varAddr = ctxGetRoutineVariableAddr rv isLocal isReturns, varType = t, varChangeMode = cm }
       routine' = Routine { routAddr = a, routType = rt, routParams = p, routVars = M.insert ident variable rv }
       in
         Context { ctxLoc = l, ctxRoutines = M.insert rout routine' r, ctxVars = v }
+
+  ctxGetRoutineVariableAddr :: M.Map String Variable -> Bool -> Bool -> Int
+  ctxGetRoutineVariableAddr vars True True = ctxGetRoutineVariableAddr vars False False
+  ctxGetRoutineVariableAddr vars isLocal False =
+    let
+      addr =
+        if isLocal then
+          3 + length (filter ctxIsLocalVar $ M.elems vars)
+        else
+          (-1) - length (filter (not . ctxIsLocalVar) $ M.elems vars)
+      in
+        addr
+  ctxGetRoutineVariableAddr _ False True = error "Internal error, returns variable must always be local"
+
+  ctxIsLocalVar :: Variable -> Bool
+  ctxIsLocalVar Variable { varAddr = v } = v >= 0
 
   ctxAddRoutine :: Context -> (String, Maybe Type) -> Context
   ctxAddRoutine Context { ctxLoc = l, ctxRoutines = r, ctxVars = v } (ident, t) =
@@ -200,7 +216,7 @@ module StaticAnalysis where
       ctx' =
         case routine of
           Nothing -> ctxAddVariable ctx (ident, t, getChangeMode cm)
-          Just r -> ctxAddRoutineVariable ctx r (ident, t, getChangeMode cm)
+          Just r -> ctxAddRoutineVariable ctx r (ident, t, getChangeMode cm, True, False)
       in
         (ctx', routine, TypedStoDecl ident)
 
@@ -209,7 +225,7 @@ module StaticAnalysis where
       ctx' = ctxAddRoutine ctx (ident, Just retType)
       (ctx1, params') = analyzeParams ident params ctx'
       retType = getFunRetType returns
-      (ctx2, _, returns') = analyzeDecl returns (ctx1, Just ident)
+      (ctx2, _, returns') = analyzeReturnsDecl returns (ctx1, Just ident)
       ctx3 = ctxSetRoutineParams ctx2 ident params'
       (ctx4, _, locals') = analyzeCpsDecl (getCpsDecl locals) (ctx3, Just ident)
       body' = analyzeCmd body (ctx4, Just ident)
@@ -225,6 +241,14 @@ module StaticAnalysis where
       body' = analyzeCmd body (ctx3, Just ident)
       in
         (ctx3, Nothing, TypedProcDecl ident params' (TypedCpsDecl locals') body')
+
+  analyzeReturnsDecl :: Decl -> (Context, Maybe Ident) -> (Context, Maybe Ident, TypedDecl)
+  analyzeReturnsDecl (StoDecl (ident, t) cm) (ctx, Just routine) =
+    let
+      ctx' = ctxAddRoutineVariable ctx routine (ident, t, getChangeMode cm, True, True)
+      in
+        (ctx', Just routine, TypedStoDecl ident)
+  analyzeReturnsDecl _ _ = error "Internal error"
 
   analyzeCpsDecl :: [Decl] -> (Context, Maybe Ident) -> (Context, Maybe Ident, [TypedDecl])
   analyzeCpsDecl [] (ctx, routine) = (ctx, routine, [])
@@ -297,7 +321,7 @@ module StaticAnalysis where
   analyzeParam routineIdent ((ident, t), mm, cm) ctx =
     let
       cm' = getChangeMode cm
-      ctx' = ctxAddRoutineVariable ctx routineIdent (ident, t, cm')
+      ctx' = ctxAddRoutineVariable ctx routineIdent (ident, t, cm', False, False)
         in
           (ctx', Param { parIdent = ident, parType = t, parMechMode = getMechMode mm, parChangeMode = cm' })
 

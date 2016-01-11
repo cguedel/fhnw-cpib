@@ -1,12 +1,32 @@
 program basic
   global
-    fun test (x:int, y:int) returns z:int
+    proc test (x:int, y:int)
     local
-      g:ratio
+      z:int
     do
-      skip
-    endfun
+      debugout x;
+      debugout y;
+      debugout z;
 
+      z := 37;
+      debugout z
+    endproc;
+
+    fun fib (x:int) returns y:int
+    local
+      z:int
+    do
+      z := 10;
+      debugout x;
+      debugout z;
+
+      y := 15;
+      debugout y
+    endfun
   do
-    call test(1, 2)
+    //call test(1, 2)
+    while true
+    do
+      debugout 1
+    endwhile
 endprogram
