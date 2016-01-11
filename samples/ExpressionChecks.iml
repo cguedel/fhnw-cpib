@@ -3,31 +3,44 @@ global
   fun incr (i:int) returns y:int
   do
     y := i + 1
-  endfun
+  endfun;
+
+  proc checkIsTrue(i:int, b:bool)
+  do
+    debugout i;
+
+    if b then
+      debugout b
+    else
+      debugout b
+    endif
+  endproc
 do
   // all outputs must return true
-  debugout true;
-  debugout not false;
-  debugout 1 < 2;
-  debugout 2 <= 2;
-  debugout 1 = 1;
-  debugout 2 > 1;
-  debugout 2 >= 2;
-  debugout 1 + 1 * 10 = 11;
-  debugout 1 * 10 + 1 = 11;
-  debugout 2 >= 2 &? 1 > 0;
-  debugout (denom 1/3) = 3;
-  debugout (num 3/4) = 3;
-  debugout (round 1/2) = 1;
-  debugout (floor 1/2) = 0;
-  debugout (ceil 1/3) = 1;
-  debugout 1/3 > 1/4;
-  debugout (1/3 > 1/4) = (not (1/4 > 1/3));
-  debugout incr(10) = 11;
+  call checkIsTrue( 1, true);
+  call checkIsTrue( 2, not false);
+  call checkIsTrue( 3, 1 < 2);
+  call checkIsTrue( 4, 2 <= 2);
+  call checkIsTrue( 5, 1 = 1);
+  call checkIsTrue( 6, 2 > 1);
+  call checkIsTrue( 7, 2 >= 2);
+  call checkIsTrue( 8, 1 + 1 * 10 = 11);
+  call checkIsTrue( 9, 1 * 10 + 1 = 11);
+  call checkIsTrue(10, 2 >= 2 &? 1 > 0);
+  call checkIsTrue(11, (denom 1/3) = 3);
+  call checkIsTrue(12, (num 3/4) = 3);
+  call checkIsTrue(13, (round 1/2) = 1);
+  call checkIsTrue(14, (floor 1/2) = 0);
+  call checkIsTrue(15, (ceil 1/3) = 1);
+  call checkIsTrue(16, 1/3 > 1/4);
+  call checkIsTrue(17, (1/3 > 1/4) = (not (1/4 > 1/3)));
+  call checkIsTrue(18, incr(10) = 11);
 
   if incr(11) = 12 then
-    debugout true
+    call checkIsTrue(19, true)
   else
     skip
-  endif
+  endif;
+
+  call checkIsTrue(20, true)
 endprogram
