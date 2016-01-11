@@ -72,6 +72,8 @@ module CodeGenerator (genCode) where
       in
         (ctxIncrLoc ctx (length loadInstr), loadInstr)
 
+  genDecl _ _ = error "Internal error, unexpected decl"
+
   genRoutine :: ScopedContext -> (Ident, [Param], Maybe TypedDecl, [TypedDecl], [TypedCommand]) -> (ScopedContext, [Instr])
   genRoutine ctx (ident, params, returns, locals, body) =
     let
