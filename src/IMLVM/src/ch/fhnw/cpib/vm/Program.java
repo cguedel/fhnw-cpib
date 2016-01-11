@@ -18,7 +18,7 @@ public class Program {
 			ExecutionError, IOException {
 
 		args = new String[] { "C:\\Users\\cg\\Documents\\Documents\\FHNW\\cpib\\code\\build\\code.txt" };
-//		args = new String[] { "C:\\Users\\peter\\Documents\\GitHub\\fhnw-cpib\\build" };
+//		args = new String[] { "C:\\Users\\peter\\Documents\\GitHub\\fhnw-cpib\\build\\code.txt" };
 		
 		if (args.length != 1) {
 			System.err.println("Expected path as argument");
