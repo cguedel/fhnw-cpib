@@ -52,7 +52,7 @@ public class Program {
 			code.put(i, c);
 		}
 
-		new VirtualMachine(code, 1024);
+		new VirtualMachine(code, 2048);
 	}
 
 	private static IInstr getInstrFromString(String instr) {
