@@ -9,9 +9,18 @@ global
     else
       f := fib(x - 1) + fib(x - 2)
     endif
-  endfun
+  endfun;
 
+  fun fibRat (x:ratio) returns f:ratio
+  do
+    if x < 2 then
+      f := x
+    else
+      f := fibRat(x - 1) + fibRat(x - 2)
+    endif
+  endfun
 do
   debugin n;
-  debugout fib(n)
+  debugout fib(n);
+  debugout fibRat(n)
 endprogram
