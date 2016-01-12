@@ -1,4 +1,4 @@
-program Assoc
+program Fibonacci
 global
   n:int;
 
